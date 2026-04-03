@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>ProximaChat</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>bluetooth-le</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+
+    <!-- ── Bluetooth ─────────────────────────────────────────────────── -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>ProximaChat uses Bluetooth to discover and chat with nearby people without internet.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>ProximaChat uses Bluetooth to advertise your presence to nearby users.</string>
+
+    <!-- ── Local Network / MultipeerConnectivity ─────────────────────── -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>ProximaChat uses Wi-Fi to communicate with nearby people without internet.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_proximachat._tcp</string>
+        <string>_proximachat._udp</string>
+    </array>
+
+    <!-- ── Photos / Camera ───────────────────────────────────────────── -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow ProximaChat to access your photos to share images in chat.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow ProximaChat to use the camera to take photos.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow ProximaChat to use the microphone for voice messages.</string>
+
+    <!-- ── App Transport Security ────────────────────────────────────── -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+
+    <!-- ── Background modes for BLE and networking ───────────────────── -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>bluetooth-central</string>
+        <string>bluetooth-peripheral</string>
+    </array>
+
+    <!-- ── MultipeerConnectivity service types ───────────────────────── -->
+    <key>MCPeerID</key>
+    <string>ProximaChat</string>
+</dict>
+</plist>

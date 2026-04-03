@@ -1,0 +1,62 @@
+# OSX
+.DS_Store
+
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-to-trash
+*.xcuserstate
+*.xcscmblueprint
+ios/Pods/
+ios/build/
+ios/*.xcworkspace
+ios/ProximaChat.xcodeproj/
+
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+android/captures/
+android/local.properties
+android/app/debug.keystore
+android/app/release/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.yarn/
+
+# Metro
+.metro-health-check*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Bundle artifacts
+*.jsbundle
+*.map
+
+# CocoaPods
+ios/Pods/
+
+# Watchman
+.watchman-crawl-info
+
+# Jest
+coverage/
+
+# TypeScript
+*.tsbuildinfo
