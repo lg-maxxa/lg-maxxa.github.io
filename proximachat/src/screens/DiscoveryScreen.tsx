@@ -205,7 +205,7 @@ export const DiscoveryScreen: React.FC = () => {
         <View style={styles.statusBar}>
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>
-            Scanning via Bluetooth &amp; Wi-Fi Direct…
+            Scanning via Bluetooth & Wi-Fi Direct…
           </Text>
         </View>
       )}

@@ -42,7 +42,7 @@ export const SplashScreen: React.FC = () => {
       {/* Bottom */}
       <View style={styles.bottom}>
         <Text style={styles.poweredBy}>
-          Powered by Bluetooth &amp; Wi-Fi Direct
+          Powered by Bluetooth & Wi-Fi Direct
         </Text>
       </View>
     </View>
