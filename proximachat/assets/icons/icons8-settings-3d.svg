@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 3D Settings/Gear Icon -->
+  <defs>
+    <linearGradient id="settingsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5AC8FA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#007AFF;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow5" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Shadow -->
+  <ellipse cx="32" cy="50" rx="18" ry="4" fill="#000" opacity="0.08"/>
+  
+  <!-- Main gear wheel -->
+  <circle cx="32" cy="32" r="16" fill="url(#settingsGradient)" filter="url(#shadow5)"/>
+  
+  <!-- Gear teeth (top) -->
+  <rect x="30" y="12" width="4" height="6" fill="url(#settingsGradient)"/>
+  <rect x="40" y="18" width="5" height="5" rx="1" fill="url(#settingsGradient)"/>
+  <rect x="46" y="28" width="6" height="4" fill="url(#settingsGradient)"/>
+  
+  <!-- Gear teeth (bottom) -->
+  <rect x="30" y="46" width="4" height="6" fill="url(#settingsGradient)"/>
+  <rect x="19" y="41" width="5" height="5" rx="1" fill="url(#settingsGradient)"/>
+  <rect x="12" y="31" width="6" height="4" fill="url(#settingsGradient)"/>
+  
+  <!-- Center hole -->
+  <circle cx="32" cy="32" r="7" fill="white"/>
+  <circle cx="32" cy="32" r="5" fill="#F0F0F0"/>
+  
+  <!-- Highlight for 3D effect -->
+  <ellipse cx="26" cy="26" rx="5" ry="4" fill="white" opacity="0.3"/>
+  <circle cx="32" cy="28" r="2" fill="white" opacity="0.4"/>
+</svg>

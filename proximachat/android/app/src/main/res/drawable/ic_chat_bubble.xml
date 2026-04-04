@@ -2,21 +2,84 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <group
-        android:scaleX="0.72"
-        android:scaleY="0.72"
-        android:translateX="15.12"
-        android:translateY="15.12">
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M54,8C28.41,8 8,25.52 8,46.5c0,11.18 5.83,21.16 15.49,28.03L20.8,92l18.14,-8.82c4.72,1.19 9.8,1.82 15.06,1.82 25.59,0 46,-17.52 46,-38.5S79.59,8 54,8z" />
-        <path
-            android:fillColor="#128C7E"
-            android:pathData="M32,39h44a4,4 0 0 1 0,8H32a4,4 0 0 1 0,-8z" />
-        <path
-            android:fillColor="#128C7E"
-            android:pathData="M32,53h32a4,4 0 0 1 0,8H32a4,4 0 0 1 0,-8z" />
-    </group>
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    
+    <!-- Shadow effect for 3D depth -->
+    <path
+        android:fillColor="#00000014"
+        android:pathData="M96,175C130.56,175 160,181.86 160,190C160,198.14 130.56,205 96,205C61.44,205 32,198.14 32,190C32,181.86 61.44,175 96,175Z" />
+    
+    <!-- Rounded rectangle background with gradient effect -->
+    <path
+        android:fillColor="#075E54"
+        android:pathData="M20,20C20,47.61 38.4,69 65,69 91.6,69 110,47.61 110,20C110,20 100,10 65,10C30,10 20,20 20,20Z" />
+    
+    <!-- Second gradient layer for depth -->
+    <path
+        android:fillColor="#128C7E"
+        android:pathData="M65,25C80.46,25 92,36.57 92,51C92,65.43 80.46,77 65,77C49.54,77 38,65.43 38,51C38,36.57 49.54,25 65,25Z" />
+    
+    <!-- Main chat bubble body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,60Q45,60 45,65L45,100Q45,105 50,105L125,105Q130,105 130,100L130,65Q130,60 125,60L50,60Z" />
+    
+    <!-- Bubble tail -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M110,105L130,130L120,105L110,105Z" />
+    
+    <!-- Message lines in bubble -->
+    <path
+        android:strokeColor="#075E54"
+        android:strokeWidth="3"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M60,75L100,75" />
+    
+    <path
+        android:strokeColor="#075E54"
+        android:strokeWidth="3"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M60,87L112,87" />
+    
+    <path
+        android:strokeColor="#075E54"
+        android:strokeWidth="3"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M60,99L108,99" />
+    
+    <!-- Highlight for 3D shine -->
+    <ellipse
+        android:fillColor="#FFFFFF"
+        android:cx="75"
+        android:cy="70"
+        android:rx="8"
+        android:ry="6" />
+    
+    <!-- Proximity radar indicator -->
+    <circle
+        android:fillColor="#25D366"
+        android:cx="140"
+        android:cy="50"
+        android:r="3" />
+    
+    <circle
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#25D366"
+        android:strokeWidth="1"
+        android:cx="140"
+        android:cy="50"
+        android:r="8" />
+    
+    <circle
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#25D366"
+        android:strokeWidth="1"
+        android:cx="140"
+        android:cy="50"
+        android:r="13" />
 </vector>

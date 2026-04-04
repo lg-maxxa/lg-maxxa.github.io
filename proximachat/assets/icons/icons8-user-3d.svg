@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 3D User/Avatar Icon -->
+  <defs>
+    <linearGradient id="userGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#34C759;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00A651;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow6" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Shadow -->
+  <ellipse cx="32" cy="54" rx="16" ry="3" fill="#000" opacity="0.08"/>
+  
+  <!-- Head -->
+  <circle cx="32" cy="18" r="10" fill="url(#userGradient)" filter="url(#shadow6)"/>
+  <ellipse cx="28" cy="15" rx="4" ry="3" fill="white" opacity="0.35"/>
+  
+  <!-- Body -->
+  <path d="M 18 32 Q 18 28 22 28 L 42 28 Q 46 28 46 32 L 46 46 Q 46 48 44 48 L 20 48 Q 18 48 18 46 Z" fill="url(#userGradient)"/>
+  
+  <!-- Highlight on body -->
+  <ellipse cx="26" cy="32" rx="6" ry="4" fill="white" opacity="0.2"/>
+  
+  <!-- Status indicator -->
+  <circle cx="48" cy="20" r="5" fill="#4CD964"/>
+  <circle cx="48" cy="20" r="3" fill="#34C759"/>
+</svg>

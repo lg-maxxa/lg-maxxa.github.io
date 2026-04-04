@@ -12,6 +12,7 @@ import Svg, {
   Polyline,
   Line,
   Polygon,
+  Ellipse,
 } from 'react-native-svg';
 
 export type IconName =
@@ -68,14 +69,27 @@ export const SvgIcon: React.FC<Props> = ({
 const ICONS: Record<IconName, (color: string) => React.ReactElement> = {
   chat: (c) => (
     <>
-      <Path
-        d="M21 15c0 .53-.21 1.04-.59 1.41A2 2 0 0119 17H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
-        stroke={c}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
+      {/* 3D Chat Bubble with gradient effect */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="19" rx="9" ry="2" fill={c} opacity={0.1} />
+        {/* Main bubble */}
+        <Path
+          d="M2 6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2h-10l-4 4v-4H4c-1.1 0-2-.9-2-2V6z"
+          fill={c}
+          opacity={0.2}
+          stroke={c}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Highlight (3D effect) */}
+        <Path
+          d="M4 8c0-.55.45-1 1-1h6c.55 0 1 .45 1 1v2c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V8z"
+          fill={c}
+          opacity={0.15}
+        />
+      </G>
     </>
   ),
   'chat-bubble': (c) => (
@@ -109,35 +123,86 @@ const ICONS: Record<IconName, (color: string) => React.ReactElement> = {
   ),
   radar: (c) => (
     <>
-      <Circle cx={12} cy={12} r={2} fill={c} />
-      <Path d="M12 2a10 10 0 100 20A10 10 0 0012 2z" stroke={c} strokeWidth={1.8} fill="none" strokeDasharray="4 2" />
-      <Path d="M12 6a6 6 0 100 12A6 6 0 0012 6z" stroke={c} strokeWidth={1.8} fill="none" strokeDasharray="3 2" />
+      {/* 3D Radar/Proximity */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="19.5" rx="8" ry="1.5" fill={c} opacity={0.08} />
+        {/* Center point */}
+        <Circle cx="12" cy="12" r="1.5" fill={c} />
+        {/* Radar circles */}
+        <Circle cx="12" cy="12" r="5" stroke={c} strokeWidth={1} opacity={0.6} fill="none" />
+        <Circle cx="12" cy="12" r="8" stroke={c} strokeWidth={0.8} opacity={0.4} fill="none" />
+        {/* Sweep line */}
+        <Line x1="12" y1="12" x2="12" y2="4" stroke={c} strokeWidth={1.2} opacity={0.8} />
+        <Line x1="12" y1="12" x2="16.5" y2="7.5" stroke={c} strokeWidth={0.8} opacity={0.5} />
+      </G>
     </>
   ),
   people: (c) => (
     <>
-      <Path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <Circle cx={9} cy={7} r={4} stroke={c} strokeWidth={1.8} fill="none" />
-      <Path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* 3D Friends/People */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="20" rx="9" ry="1.5" fill={c} opacity={0.08} />
+        {/* Person 1 (left) */}
+        <Circle cx="7" cy="6" r="2.5" fill={c} opacity={0.2} stroke={c} strokeWidth={1} />
+        <Path
+          d="M4 11c0-1 1-2 2-2h2c1 0 2 1 2 2v4c0 1-1 2-2 2H6c-1 0-2-1-2-2v-4z"
+          fill={c}
+          opacity={0.15}
+          stroke={c}
+          strokeWidth={1}
+        />
+        {/* Person 2 (right) */}
+        <Circle cx="17" cy="6" r="2.5" fill={c} opacity={0.2} stroke={c} strokeWidth={1} />
+        <Path
+          d="M14 11c0-1 1-2 2-2h2c1 0 2 1 2 2v4c0 1-1 2-2 2h-2c-1 0-2-1-2-2v-4z"
+          fill={c}
+          opacity={0.15}
+          stroke={c}
+          strokeWidth={1}
+        />
+      </G>
     </>
   ),
   settings: (c) => (
     <>
-      <Circle cx={12} cy={12} r={3} stroke={c} strokeWidth={1.8} fill="none" />
-      <Path
-        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
-        stroke={c}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
+      {/* 3D Settings/Gear */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="19.5" rx="8" ry="1.5" fill={c} opacity={0.08} />
+        {/* Gear circle */}
+        <Circle cx="12" cy="12" r="5" fill={c} opacity={0.15} stroke={c} strokeWidth={1} />
+        {/* Gear teeth */}
+        <Rect x="10.5" y="2" width="3" height="2" fill={c} opacity={0.2} />
+        <Rect x="17" y="6.5" width="2.5" height="2.5" rx={0.5} fill={c} opacity={0.2} />
+        <Rect x="20" y="11" width="2" height="2" fill={c} opacity={0.2} />
+        {/* Center */}
+        <Circle cx="12" cy="12" r="2" fill={c} opacity={0.25} />
+        {/* Highlight */}
+        <Circle cx="10" cy="10" r="1.5" fill={c} opacity={0.1} />
+      </G>
     </>
   ),
   person: (c) => (
     <>
-      <Path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke={c} strokeWidth={1.8} strokeLinecap="round" fill="none" />
-      <Circle cx={12} cy={7} r={4} stroke={c} strokeWidth={1.8} fill="none" />
+      {/* 3D Person/Avatar */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="20" rx="7" ry="1.5" fill={c} opacity={0.08} />
+        {/* Head */}
+        <Circle cx="12" cy="6" r="3" fill={c} opacity={0.18} stroke={c} strokeWidth={1} />
+        {/* Body */}
+        <Path
+          d="M8 11c0-1 1-2 2-2h4c1 0 2 1 2 2v6c0 1-1 2-2 2H10c-1 0-2-1-2-2v-6z"
+          fill={c}
+          opacity={0.12}
+          stroke={c}
+          strokeWidth={1}
+        />
+        {/* Highlight (3D effect) */}
+        <Circle cx="10" cy="7" r="1" fill={c} opacity={0.2} />
+      </G>
     </>
   ),
   'add-person': (c) => (
@@ -199,14 +264,30 @@ const ICONS: Record<IconName, (color: string) => React.ReactElement> = {
     </>
   ),
   send: (c) => (
-    <Path
-      d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
-      stroke={c}
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
+    <>
+      {/* 3D Send Arrow */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="19" rx="7" ry="1.5" fill={c} opacity={0.08} />
+        {/* Arrow shaft */}
+        <Path
+          d="M2 12l14 0"
+          stroke={c}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          fill="none"
+        />
+        {/* Arrow head */}
+        <Path
+          d="M16 8l6 4-6 4"
+          stroke={c}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </G>
+    </>
   ),
   wifi: (c) => (
     <>
@@ -245,8 +326,29 @@ const ICONS: Record<IconName, (color: string) => React.ReactElement> = {
   ),
   bell: (c) => (
     <>
-      <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={c} strokeWidth={1.8} strokeLinecap="round" fill="none" />
-      <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={c} strokeWidth={1.8} strokeLinecap="round" fill="none" />
+      {/* 3D Notification Bell */}
+      <G>
+        {/* Shadow */}
+        <Ellipse cx="12" cy="20" rx="7" ry="1.5" fill={c} opacity={0.08} />
+        {/* Bell body */}
+        <Path
+          d="M5 9c0-2.5 2-4 7-4s7 1.5 7 4c0 4-3 5-3 5h-8c0 0-3-1-3-5z"
+          fill={c}
+          opacity={0.15}
+          stroke={c}
+          strokeWidth={1}
+        />
+        {/* Bell clapper */}
+        <Path
+          d="M11 17h2v1h-2z"
+          fill={c}
+          opacity={0.2}
+        />
+        {/* Notification badge */}
+        <Circle cx="17" cy="5" r="2" fill={c} />
+        {/* Highlight */}
+        <Circle cx="15" cy="3" r="0.8" fill={c} opacity={0.3} />
+      </G>
     </>
   ),
   lock: (c) => (

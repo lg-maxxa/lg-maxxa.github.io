@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- 3D App Launcher Icon (ProximaChat) -->
+  <defs>
+    <linearGradient id="appBgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#075E54;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#128C7E;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bubbleGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8F5F5;stop-opacity:1" />
+    </linearGradient>
+    <filter id="appShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="12" stdDeviation="8" flood-opacity="0.3"/>
+    </filter>
+    <filter id="innerShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.25"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Shadow/depth -->
+  <ellipse cx="96" cy="175" rx="65" ry="12" fill="#000" opacity="0.12"/>
+  
+  <!-- Rounded rectangle background -->
+  <rect x="20" y="20" width="152" height="152" rx="45" fill="url(#appBgGradient)" filter="url(#appShadow)"/>
+  
+  <!-- Highlight (top-left for 3D effect) -->
+  <ellipse cx="60" cy="50" rx="35" ry="30" fill="white" opacity="0.25"/>
+  
+  <!-- Main chat bubble (3D centered) -->
+  <defs>
+    <filter id="bubbleShadow">
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Bubble body -->
+  <path d="M 50 60 Q 45 60 45 65 L 45 100 Q 45 105 50 105 L 125 105 Q 130 105 130 100 L 130 65 Q 130 60 125 60 L 50 60 Z" 
+        fill="url(#bubbleGlow)" filter="url(#bubbleShadow)"/>
+  
+  <!-- Bubble tail -->
+  <path d="M 110 105 L 130 130 L 120 105 Z" fill="url(#bubbleGlow)" filter="url(#bubbleShadow)"/>
+  
+  <!-- Message lines in bubble -->
+  <line x1="60" y1="75" x2="100" y2="75" stroke="url(#appBgGradient)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <line x1="60" y1="87" x2="112" y2="87" stroke="url(#appBgGradient)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <line x1="60" y1="99" x2="108" y2="99" stroke="url(#appBgGradient)" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+  
+  <!-- Proximity indicator (small radar circles in corner) -->
+  <g opacity="0.6">
+    <circle cx="140" cy="50" r="3" fill="white"/>
+    <circle cx="140" cy="50" r="8" fill="none" stroke="white" stroke-width="1.5"/>
+    <circle cx="140" cy="50" r="13" fill="none" stroke="white" stroke-width="1"/>
+  </g>
+  
+  <!-- Extra shine for premium look -->
+  <ellipse cx="75" cy="70" rx="8" ry="6" fill="white" opacity="0.2"/>
+</svg>
