@@ -45,6 +45,18 @@ export const SetupProfileScreen: React.FC = () => {
   const [selectedEmoji, setSelectedEmoji] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
 
+  const generateProfileId = (): string => {
+    try {
+      const next = uuid.v4();
+      if (next) {
+        return String(next);
+      }
+    } catch (err) {
+      console.warn('[Setup] UUID generation failed, using fallback id', err);
+    }
+    return `user_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+  };
+
   const handleCreate = async () => {
     const trimName = displayName.trim();
     const trimUser = username.trim().replace(/\s+/g, '_').toLowerCase();
@@ -65,7 +77,7 @@ export const SetupProfileScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const profile: UserProfile = {
-        id: String(uuid.v4()),
+        id: generateProfileId(),
         username: trimUser,
         displayName: trimName,
         avatarColor: selectedColor,
@@ -74,11 +86,31 @@ export const SetupProfileScreen: React.FC = () => {
         createdAt: Date.now(),
       };
 
-      await StorageService.saveProfile(profile);
+      let saveFailed = false;
+      try {
+        await StorageService.saveProfile(profile);
+      } catch (err) {
+        saveFailed = true;
+        console.error('[Setup] Failed to persist profile:', err);
+      }
+
       setProfile(profile);
       setProfileSetup(true);
-      NearbyService.initialize(profile);
+
+      try {
+        NearbyService.initialize(profile);
+      } catch (err) {
+        console.error('[Setup] Nearby service initialization failed:', err);
+      }
+
+      if (saveFailed) {
+        Alert.alert(
+          'Profile created',
+          'You are now inside the app, but profile saving failed on this device. Please keep the app open and retry setup later if needed.',
+        );
+      }
     } catch (err) {
+      console.error('[Setup] Profile creation failed:', err);
       Alert.alert('Error', 'Failed to create profile. Please try again.');
     } finally {
       setIsLoading(false);
