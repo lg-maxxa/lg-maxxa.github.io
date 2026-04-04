@@ -35,8 +35,22 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x proximachat/android/gradlew
 
+      - name: Generate debug keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore proximachat/android/app/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build release APK
         working-directory: proximachat/android
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m"
         run: ./gradlew clean assembleRelease --no-daemon --stacktrace
 
       - name: Upload release APK artifact
