@@ -2,6 +2,12 @@ apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 apply plugin: "kotlin-android"
 
+ext.hermesEnabled = true
+def hasReleaseSigning = project.hasProperty("MYAPP_UPLOAD_STORE_FILE") &&
+    project.hasProperty("MYAPP_UPLOAD_STORE_PASSWORD") &&
+    project.hasProperty("MYAPP_UPLOAD_KEY_ALIAS") &&
+    project.hasProperty("MYAPP_UPLOAD_KEY_PASSWORD")
+
 react {
     /* Folders */
     root = file("../../")
@@ -10,10 +16,7 @@ react {
     cliFile = file("../../node_modules/@react-native-community/cli/build/bin.js")
 
     /* JavaScript bundler */
-    bundleCommand = "ram-bundle"
-
-    /* Hermes */
-    hermesEnabled = true
+    bundleCommand = "bundle"
 }
 
 android {
@@ -37,6 +40,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
 
     buildTypes {
@@ -44,9 +55,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
