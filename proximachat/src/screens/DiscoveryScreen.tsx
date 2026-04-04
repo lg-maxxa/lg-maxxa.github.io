@@ -11,6 +11,7 @@ import {
   Animated,
   Alert,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PeerCard} from '../components/PeerCard';
@@ -20,7 +21,7 @@ import {useAppStore} from '../store/useAppStore';
 import {NearbyService} from '../services/NearbyService';
 import {StorageService} from '../services/StorageService';
 import {COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from '../theme';
-import type {Peer, Friend, FriendRequest} from '../types';
+import type {Peer, FriendRequest} from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const uuid = require('react-native-uuid');
@@ -35,7 +36,6 @@ export const DiscoveryScreen: React.FC = () => {
     addPeer,
     updatePeer,
     clearPeers,
-    addFriend,
     addFriendRequest,
   } = useAppStore();
 
@@ -68,12 +68,58 @@ export const DiscoveryScreen: React.FC = () => {
     };
   }, [discovery.isScanning, pulseAnim]);
 
+  const requestScanPermissions = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
+    const apiLevel =
+      typeof Platform.Version === 'number'
+        ? Platform.Version
+        : Number(Platform.Version);
+
+    const permissions: PermissionsAndroid.Permission[] = [
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+    ];
+
+    if (apiLevel >= 31) {
+      permissions.push(
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      );
+    }
+
+    if (apiLevel >= 33 && PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES) {
+      permissions.push(
+        PermissionsAndroid.PERMISSIONS
+          .NEARBY_WIFI_DEVICES as PermissionsAndroid.Permission,
+      );
+    }
+
+    const results = await PermissionsAndroid.requestMultiple(permissions);
+    return permissions.every(
+      (permission) => results[permission] === PermissionsAndroid.RESULTS.GRANTED,
+    );
+  }, []);
+
   // ── Start/stop scanning ───────────────────────────────────────────────────
   const startScan = useCallback(async () => {
     if (!profile) {
       return;
     }
+
+    const granted = await requestScanPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Permissions required',
+        'Bluetooth, Wi-Fi, and location permissions are required to scan nearby users.',
+      );
+      return;
+    }
+
     clearPeers();
+    await StorageService.saveDiscoveredPeers([]);
     setScanning(true);
     NearbyService.initialize(profile);
     await NearbyService.startAdvertising();
@@ -86,13 +132,21 @@ export const DiscoveryScreen: React.FC = () => {
         return;
       }
       addPeer(peer);
+      StorageService.saveDiscoveredPeers(useAppStore.getState().discovery.peers);
     });
 
     // Auto-stop after 30s
     setTimeout(() => {
       stopScan();
     }, 30000);
-  }, [profile, clearPeers, setScanning, friends, addPeer]);
+  }, [
+    profile,
+    requestScanPermissions,
+    clearPeers,
+    setScanning,
+    friends,
+    addPeer,
+  ]);
 
   const stopScan = useCallback(() => {
     NearbyService.stopDiscovery();
@@ -130,14 +184,12 @@ export const DiscoveryScreen: React.FC = () => {
           useAppStore.getState().friendRequests,
         );
 
-        // Simulate auto-accept in demo mode
-        simulateDemoAccept(peer, profile, addFriend, updatePeer);
       } else {
         updatePeer(peer.id, {status: 'discovered'});
         Alert.alert('Error', 'Could not reach this device. Try moving closer.');
       }
     },
-    [profile, updatePeer, addFriendRequest, addFriend],
+    [profile, updatePeer, addFriendRequest],
   );
 
   const peers = discovery.peers;
@@ -214,7 +266,7 @@ export const DiscoveryScreen: React.FC = () => {
       {!discovery.isScanning && peers.length === 0 ? (
         <EmptyState
           icon="radar"
-          title="No one nearby"
+          title="No user available in range"
           subtitle={`Tap "Scan" to discover people around you via Bluetooth and Wi-Fi.${
             Platform.OS === 'ios'
               ? '\n\nNote: iOS uses MultipeerConnectivity.'
@@ -258,49 +310,6 @@ export const DiscoveryScreen: React.FC = () => {
     </View>
   );
 };
-
-// ─── Demo: simulate the discovered peer accepting the request ─────────────────
-function simulateDemoAccept(
-  peer: Peer,
-  profile: import('../types').UserProfile,
-  addFriend: (f: Friend) => void,
-  updatePeer: (id: string, updates: Partial<Peer>) => void,
-) {
-  setTimeout(() => {
-    const friend: Friend = {
-      id: peer.id,
-      username: peer.username,
-      displayName: peer.displayName,
-      avatarColor: peer.avatarColor,
-      avatarEmoji: peer.avatarEmoji,
-      addedAt: Date.now(),
-      isOnline: true,
-      connectionType: peer.connectionType,
-    };
-    addFriend(friend);
-    updatePeer(peer.id, {status: 'friend'});
-
-    // Also open a conversation
-    const store = require('../store/useAppStore').useAppStore.getState();
-    const convId = `conv_${[profile.id, peer.id].sort().join('_')}`;
-    store.upsertConversation({
-      id: convId,
-      peerId: peer.id,
-      peerUsername: peer.username,
-      peerDisplayName: peer.displayName,
-      peerAvatarColor: peer.avatarColor,
-      peerAvatarEmoji: peer.avatarEmoji,
-      unreadCount: 0,
-      isPeerOnline: true,
-      isPeerTyping: false,
-      lastActivityAt: Date.now(),
-      connectionType: peer.connectionType,
-      createdAt: Date.now(),
-    });
-    StorageService.saveFriends(store.friends);
-    StorageService.saveConversations(store.conversations);
-  }, 2500);
-}
 
 const styles = StyleSheet.create({
   root: {

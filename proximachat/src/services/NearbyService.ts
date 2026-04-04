@@ -10,7 +10,8 @@
  * - On connection: negotiates TCP socket over Wi-Fi Direct (Android) or BLE
  * - Messages sent as JSON payloads over the socket/BLE channel
  */
-import {Platform, NativeEventEmitter, NativeModules} from 'react-native';
+import {Platform} from 'react-native';
+import type {EmitterSubscription} from 'react-native';
 import type {NetworkPayload, Peer, UserProfile} from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -24,13 +25,28 @@ let _profile: UserProfile | null = null;
 let _listeners: EventCallback[] = [];
 let _isAdvertising = false;
 let _isScanning = false;
+let _bleManager: {
+  startDeviceScan: (
+    uuids: string[] | null,
+    options: {allowDuplicates?: boolean},
+    listener: (error: unknown, device: unknown) => void,
+  ) => void;
+  stopDeviceScan: () => void;
+  destroy?: () => void;
+} | null = null;
+let _wifiP2PModule: Record<string, unknown> | null = null;
+let _wifiPeersSubscription: EmitterSubscription | null = null;
 
 // Lazy-import native modules to avoid crash if unlinked
 function getBle() {
+  if (_bleManager) {
+    return _bleManager;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const {BleManager} = require('react-native-ble-plx');
-    return new BleManager();
+    _bleManager = new BleManager();
+    return _bleManager;
   } catch {
     return null;
   }
@@ -40,57 +56,100 @@ function getWifiP2P() {
   if (Platform.OS !== 'android') {
     return null;
   }
+  if (_wifiP2PModule) {
+    return _wifiP2PModule;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('react-native-wifi-p2p');
+    _wifiP2PModule = require('react-native-wifi-p2p');
+    return _wifiP2PModule;
   } catch {
     return null;
   }
 }
 
-// ─── Mock / Simulation Layer (for development/testing without hardware) ───────
-let _mockInterval: ReturnType<typeof setInterval> | null = null;
-const MOCK_PEERS: Peer[] = [
-  {
-    id: 'mock-peer-1',
-    username: 'alex_nearby',
-    displayName: 'Alex',
-    avatarColor: '#FF6B6B',
-    avatarEmoji: '🦊',
+function sanitizeUsername(name: string): string {
+  const cleaned = name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+  return cleaned.length >= 3 ? cleaned : `user_${Date.now().toString().slice(-5)}`;
+}
+
+function inferDistance(rssi?: number): Peer['distance'] | undefined {
+  if (typeof rssi !== 'number') {
+    return undefined;
+  }
+  if (rssi >= -67) {
+    return 'near';
+  }
+  if (rssi >= -80) {
+    return 'medium';
+  }
+  return 'far';
+}
+
+function parseBlePeer(device: unknown): Peer | null {
+  if (!device || typeof device !== 'object') {
+    return null;
+  }
+  const d = device as {
+    id?: unknown;
+    name?: unknown;
+    localName?: unknown;
+    rssi?: unknown;
+  };
+  if (typeof d.id !== 'string' || !d.id.trim()) {
+    return null;
+  }
+
+  const displayName =
+    (typeof d.name === 'string' && d.name.trim()) ||
+    (typeof d.localName === 'string' && d.localName.trim()) ||
+    'Nearby Device';
+  const rssi = typeof d.rssi === 'number' ? d.rssi : undefined;
+
+  return {
+    id: d.id,
+    username: sanitizeUsername(displayName),
+    displayName,
+    avatarColor: '#42A5F5',
     status: 'discovered',
     connectionType: 'bluetooth',
-    rssi: -65,
-    distance: 'near',
+    rssi,
+    distance: inferDistance(rssi),
     lastSeen: Date.now(),
     isOnline: true,
-  },
-  {
-    id: 'mock-peer-2',
-    username: 'sam_2024',
-    displayName: 'Sam',
-    avatarColor: '#4ECDC4',
-    avatarEmoji: '🐬',
+  };
+}
+
+function parseWifiPeer(device: unknown): Peer | null {
+  if (!device || typeof device !== 'object') {
+    return null;
+  }
+  const d = device as {
+    deviceAddress?: unknown;
+    deviceName?: unknown;
+  };
+  if (typeof d.deviceAddress !== 'string' || !d.deviceAddress.trim()) {
+    return null;
+  }
+  const displayName =
+    (typeof d.deviceName === 'string' && d.deviceName.trim()) ||
+    'Wi-Fi Device';
+
+  return {
+    id: d.deviceAddress,
+    username: sanitizeUsername(displayName),
+    displayName,
+    avatarColor: '#26A69A',
     status: 'discovered',
     connectionType: 'wifi',
-    rssi: -78,
-    distance: 'medium',
     lastSeen: Date.now(),
     isOnline: true,
-  },
-  {
-    id: 'mock-peer-3',
-    username: 'jordan_p2p',
-    displayName: 'Jordan',
-    avatarColor: '#A8E6CF',
-    avatarEmoji: '🌿',
-    status: 'discovered',
-    connectionType: 'both',
-    rssi: -85,
-    distance: 'far',
-    lastSeen: Date.now(),
-    isOnline: true,
-  },
-];
+  };
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -140,32 +199,51 @@ export const NearbyService = {
     _isScanning = true;
     console.log('[Nearby] Started discovery');
 
-    // ── Real BLE scanning would go here ──────────────────────────────────
-    // const bleManager = getBle();
-    // if (bleManager) {
-    //   bleManager.startDeviceScan(
-    //     [SERVICE_UUID],
-    //     {allowDuplicates: false},
-    //     (error, device) => {
-    //       if (error || !device) return;
-    //       const peer = parseBleDevice(device);
-    //       onPeerFound(peer);
-    //     }
-    //   );
-    // }
+    const bleManager = getBle();
+    if (bleManager) {
+      bleManager.startDeviceScan(
+        [SERVICE_UUID],
+        {allowDuplicates: false},
+        (error, device) => {
+          if (error) {
+            console.error('[Nearby] BLE scan error:', error);
+            return;
+          }
+          const peer = parseBlePeer(device);
+          if (peer) {
+            onPeerFound(peer);
+          }
+        },
+      );
+    }
 
-    // ── Simulation: emit mock peers progressively ─────────────────────────
-    let peerIdx = 0;
-    _mockInterval = setInterval(() => {
-      if (peerIdx < MOCK_PEERS.length) {
-        const peer = {
-          ...MOCK_PEERS[peerIdx],
-          lastSeen: Date.now(),
+    const wifiP2P = getWifiP2P();
+    if (wifiP2P) {
+      try {
+        const wifi = wifiP2P as {
+          initialize?: () => Promise<boolean>;
+          subscribeOnPeersUpdates?: (callback: (data: {devices: unknown[]}) => void) => EmitterSubscription;
+          startDiscoveringPeers?: () => Promise<string>;
+          stopDiscoveringPeers?: () => Promise<void>;
         };
-        onPeerFound(peer);
-        peerIdx++;
+        await wifi.initialize?.();
+
+        _wifiPeersSubscription = wifi.subscribeOnPeersUpdates?.((data) => {
+          data.devices.forEach((device) => {
+            const peer = parseWifiPeer(device);
+            if (peer) {
+              onPeerFound(peer);
+            }
+          });
+        }) ?? null;
+
+        if (typeof wifi.startDiscoveringPeers === 'function') {
+          await wifi.startDiscoveringPeers();
+        }
+      } catch (err) {
+        console.error('[Nearby] Wi-Fi Direct discovery error:', err);
       }
-    }, 1500);
+    }
   },
 
   /**
@@ -173,9 +251,22 @@ export const NearbyService = {
    */
   stopDiscovery(): void {
     _isScanning = false;
-    if (_mockInterval) {
-      clearInterval(_mockInterval);
-      _mockInterval = null;
+    try {
+      _bleManager?.stopDeviceScan();
+    } catch (err) {
+      console.error('[Nearby] Failed to stop BLE scan:', err);
+    }
+    try {
+      const wifi = _wifiP2PModule as {
+        stopDiscoveringPeers?: () => Promise<void>;
+      } | null;
+      if (_wifiPeersSubscription) {
+        _wifiPeersSubscription.remove();
+        _wifiPeersSubscription = null;
+      }
+      void wifi?.stopDiscoveringPeers?.();
+    } catch (err) {
+      console.error('[Nearby] Failed to stop Wi-Fi Direct discovery:', err);
     }
     console.log('[Nearby] Stopped discovery');
   },
@@ -214,9 +305,18 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending friend request to ${peerId}`);
-    // In real impl: send over BLE/socket channel
-    // _sendPayload(peerId, payload);
-    return true;
+    const wifi = getWifiP2P() as {
+      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
+    } | null;
+    if (wifi?.sendMessageTo) {
+      try {
+        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
+        return true;
+      } catch (err) {
+        console.error('[Nearby] Failed to send friend request:', err);
+      }
+    }
+    return false;
   },
 
   /**
@@ -255,8 +355,18 @@ export const NearbyService = {
     console.log(
       `[Nearby] ${accepted ? 'Accepted' : 'Rejected'} friend request from ${peerId}`,
     );
-    // _sendPayload(peerId, payload);
-    return true;
+    const wifi = getWifiP2P() as {
+      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
+    } | null;
+    if (wifi?.sendMessageTo) {
+      try {
+        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
+        return true;
+      } catch (err) {
+        console.error('[Nearby] Failed to respond to friend request:', err);
+      }
+    }
+    return false;
   },
 
   /**
@@ -276,19 +386,18 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending message to ${peerId}: ${message.text}`);
-    // _sendPayload(peerId, payload);
-    // Simulate delivery receipt after 500ms
-    setTimeout(() => {
-      _listeners.forEach((cb) =>
-        cb({
-          type: 'delivery_receipt',
-          senderId: peerId,
-          messageId: message.id,
-          timestamp: Date.now(),
-        }),
-      );
-    }, 500);
-    return true;
+    const wifi = getWifiP2P() as {
+      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
+    } | null;
+    if (wifi?.sendMessageTo) {
+      try {
+        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
+        return true;
+      } catch (err) {
+        console.error('[Nearby] Failed to send message:', err);
+      }
+    }
+    return false;
   },
 
   /**
@@ -336,6 +445,14 @@ export const NearbyService = {
   destroy(): void {
     NearbyService.stopAdvertising();
     NearbyService.stopDiscovery();
+    try {
+      _bleManager?.destroy?.();
+    } catch {
+      // Ignore cleanup errors.
+    }
+    _bleManager = null;
+    _wifiP2PModule = null;
+    _wifiPeersSubscription = null;
     _listeners = [];
     _profile = null;
   },

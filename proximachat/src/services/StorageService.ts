@@ -7,6 +7,7 @@ import type {
   Friend,
   FriendRequest,
   Conversation,
+  Peer,
   Message,
 } from '../types';
 
@@ -15,6 +16,7 @@ const KEYS = {
   FRIENDS: '@proximachat/friends',
   FRIEND_REQUESTS: '@proximachat/friend_requests',
   CONVERSATIONS: '@proximachat/conversations',
+  DISCOVERED_PEERS: '@proximachat/discovered_peers',
   MESSAGES_PREFIX: '@proximachat/messages/',
   SETTINGS: '@proximachat/settings',
 };
@@ -69,6 +71,16 @@ export const StorageService = {
 
   async loadConversations(): Promise<Conversation[]> {
     const raw = await AsyncStorage.getItem(KEYS.CONVERSATIONS);
+    return raw ? JSON.parse(raw) : [];
+  },
+
+  // ── Discovery peers ───────────────────────────────────────────────────────
+  async saveDiscoveredPeers(peers: Peer[]): Promise<void> {
+    await AsyncStorage.setItem(KEYS.DISCOVERED_PEERS, JSON.stringify(peers));
+  },
+
+  async loadDiscoveredPeers(): Promise<Peer[]> {
+    const raw = await AsyncStorage.getItem(KEYS.DISCOVERED_PEERS);
     return raw ? JSON.parse(raw) : [];
   },
 
