@@ -83,8 +83,6 @@ export const SetupProfileScreen: React.FC = () => {
       setProfile(profile);
       setProfileSetup(true);
       NearbyService.initialize(profile);
-
-      navigation.replace('Main');
     } catch (err) {
       Alert.alert('Error', 'Failed to create profile. Please try again.');
     } finally {
