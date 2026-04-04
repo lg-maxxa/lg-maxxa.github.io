@@ -1,8 +1,7 @@
-# This is the updated build workflow
-
 name: Build APK
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,30 +11,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          java-version: '11'
+          node-version: "20"
 
-      - name: Set up Android SDK
-        uses: r0adkll/setup-android@v1
+      - name: Install JavaScript dependencies
+        working-directory: proximachat
+        run: npm install
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
-          api-level: '30'
-          build-tools: '30.0.3'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Clean and Build APK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x proximachat/android/gradlew
+
+      - name: Generate debug keystore
         run: |
-          ./gradlew clean assembleRelease --no-daemon
+          keytool -genkeypair -v \
+            -keystore proximachat/android/app/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Disable Kotlin incremental compilation if needed
+      - name: Build release APK
+        working-directory: proximachat/android
         env:
-          GRADLE_OPTS: "-Dkotlin.incremental=false"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m"
+        run: ./gradlew clean assembleRelease --no-daemon --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v2
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: proximachat-release-apk
+          path: proximachat/android/app/build/outputs/apk/release/app-release.apk
