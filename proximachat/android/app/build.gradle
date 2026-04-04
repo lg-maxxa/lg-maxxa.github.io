@@ -2,6 +2,8 @@ apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 apply plugin: "kotlin-android"
 
+project.ext.hermesEnabled = true
+
 react {
     /* Folders */
     root = file("../../")
@@ -10,10 +12,8 @@ react {
     cliFile = file("../../node_modules/@react-native-community/cli/build/bin.js")
 
     /* JavaScript bundler */
-    bundleCommand = "ram-bundle"
+    bundleCommand = "bundle"
 
-    /* Hermes */
-    hermesEnabled = true
 }
 
 android {
@@ -45,8 +45,8 @@ android {
         }
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
