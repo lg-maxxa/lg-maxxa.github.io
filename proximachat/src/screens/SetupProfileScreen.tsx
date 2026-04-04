@@ -14,20 +14,16 @@ import {
   Alert,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {UserAvatar} from '../components/UserAvatar';
 import {AnimatedBat} from '../components/AnimatedBat';
 import {useAppStore} from '../store/useAppStore';
 import {StorageService} from '../services/StorageService';
 import {NearbyService} from '../services/NearbyService';
 import {COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from '../theme';
-import type {RootStackParamList, UserProfile} from '../types';
+import type {UserProfile} from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const uuid = require('react-native-uuid');
-
-type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const AVATAR_COLORS = [
   '#FF6B6B', '#FF8E53', '#FFC107', '#4CAF50', '#26C6DA',
@@ -40,7 +36,6 @@ const AVATAR_EMOJIS = [
 
 export const SetupProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<Nav>();
   const {setProfile, setProfileSetup} = useAppStore();
 
   const [displayName, setDisplayName] = useState('');
