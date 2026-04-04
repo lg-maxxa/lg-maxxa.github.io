@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - copilot/check-final-apk-availability
 
 jobs:
   build:
@@ -50,8 +51,8 @@ jobs:
       - name: Build release APK
         working-directory: proximachat/android
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m"
-        run: ./gradlew clean assembleRelease --no-daemon --stacktrace
+          GRADLE_OPTS: "-Xmx5500m -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
+        run: ./gradlew clean assembleRelease --no-daemon --max-workers=2
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
