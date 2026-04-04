@@ -8,12 +8,6 @@ react {
     reactNativeDir = file("../../node_modules/react-native")
     codegenDir = file("../../node_modules/@react-native/codegen")
     cliFile = file("../../node_modules/@react-native-community/cli/build/bin.js")
-
-    /* JavaScript bundler */
-    bundleCommand = "ram-bundle"
-
-    /* Hermes */
-    hermesEnabled = true
 }
 
 android {

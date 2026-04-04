@@ -46,6 +46,19 @@ jobs:
         working-directory: proximachat/android
         run: chmod +x gradlew
 
+      - name: Generate debug keystore
+        working-directory: proximachat/android/app
+        run: |
+          keytool -genkeypair \
+            -keystore debug.keystore \
+            -alias androiddebugkey \
+            -keypass android \
+            -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000
+
       - name: Build release APK
         working-directory: proximachat/android
         env:
