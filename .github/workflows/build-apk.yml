@@ -1,11 +1,14 @@
-# This is the updated build workflow
-
 name: Build APK
 
 on:
   push:
     branches:
       - main
+      - 'copilot/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,29 +16,45 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: proximachat/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: proximachat
+        run: npm install
 
       - name: Set up Android SDK
-        uses: r0adkll/setup-android@v1
-        with:
-          api-level: '30'
-          build-tools: '30.0.3'
+        uses: android-actions/setup-android@v3
 
-      - name: Clean and Build APK
+      - name: Install Android SDK components
         run: |
-          ./gradlew clean assembleRelease --no-daemon
+          sdkmanager "build-tools;34.0.0" "platforms;android-34" "ndk;27.3.13750724"
 
-      - name: Disable Kotlin incremental compilation if needed
+      - name: Make gradlew executable
+        working-directory: proximachat/android
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        working-directory: proximachat/android
         env:
-          GRADLE_OPTS: "-Dkotlin.incremental=false"
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        run: ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v2
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: ProximaChat-release
+          path: proximachat/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
