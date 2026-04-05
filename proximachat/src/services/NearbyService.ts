@@ -328,6 +328,35 @@ async function sendWithRetry(peerId: string, payload: NetworkPayload): Promise<b
   return false;
 }
 
+async function startWifiPeerDiscoveryWithRetry(wifi: WifiP2PModule): Promise<void> {
+  const attempts = 3;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      // Reset any stale discovery/group state that commonly causes BUSY failures.
+      await wifi.stopDiscoveringPeers?.().catch(() => undefined);
+      await wifi.removeGroup?.().catch(() => undefined);
+      await sleep(250);
+
+      await wifi.startDiscoveringPeers?.();
+      diagnostic('info', 'discovery', `Wi-Fi Direct discovery started (attempt ${attempt})`);
+      return;
+    } catch (err) {
+      diagnostic(
+        attempt === attempts ? 'error' : 'warn',
+        'discovery',
+        `Wi-Fi Direct discovery attempt ${attempt}/${attempts} failed`,
+      );
+
+      if (attempt < attempts) {
+        await sleep(450 * attempt);
+      }
+    }
+  }
+
+  throw new Error('wifi_direct_discovery_failed');
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const NearbyService = {
@@ -355,7 +384,8 @@ export const NearbyService = {
     if (wifi) {
       try {
         await wifi.initialize?.();
-        await wifi.createGroup?.();
+        // Do not force createGroup here; on many devices this makes peer discovery BUSY.
+        // Group will be negotiated when connect(peerId) is invoked.
         startWifiMessageLoop(wifi);
       } catch (err) {
         console.warn('[Nearby] Wi-Fi Direct advertising setup failed:', err);
@@ -445,10 +475,7 @@ export const NearbyService = {
           }) ?? null;
 
         startWifiMessageLoop(wifi);
-
-        if (typeof wifi.startDiscoveringPeers === 'function') {
-          await wifi.startDiscoveringPeers();
-        }
+        await startWifiPeerDiscoveryWithRetry(wifi);
       } catch (err) {
         console.error('[Nearby] Wi-Fi Direct discovery error:', err);
         diagnostic('error', 'transport', 'Wi-Fi Direct discovery failed');
