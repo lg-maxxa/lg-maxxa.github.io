@@ -8,6 +8,13 @@ export interface CryptoIdentity {
 }
 
 function getNacl() {
+  // Load crypto polyfill lazily to avoid startup crashes on some devices.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('react-native-get-random-values');
+  } catch {
+    // If unavailable, nacl may still work on engines that already provide crypto.
+  }
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('tweetnacl');
 }

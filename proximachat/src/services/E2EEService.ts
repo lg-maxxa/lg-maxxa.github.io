@@ -9,6 +9,13 @@ export interface EncryptedEnvelope {
 }
 
 function getNacl() {
+  // Load crypto polyfill lazily to avoid launch-time native initialization risk.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('react-native-get-random-values');
+  } catch {
+    // Continue; some runtimes provide crypto already.
+  }
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('tweetnacl');
 }

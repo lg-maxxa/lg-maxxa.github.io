@@ -1,9 +1,8 @@
 /**
  * AnimatedBat - Lottie animation of the bat icon from icons8
  */
-import React, {useRef} from 'react';
-import {View, StyleSheet} from 'react-native';
-import LottieView from 'lottie-react-native';
+import React from 'react';
+import {View, StyleSheet, Text} from 'react-native';
 
 interface Props {
   size?: number;
@@ -16,19 +15,13 @@ export const AnimatedBat: React.FC<Props> = ({
   autoPlay = true,
   loop = true,
 }) => {
-  const animation = useRef<LottieView>(null);
+  const emojiSize = Math.max(20, Math.floor(size * 0.52));
 
   return (
     <View style={[styles.container, {width: size, height: size}]}>
-      <LottieView
-        ref={animation}
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        source={require('../../assets/icons/icons8-bat.json')}
-        style={styles.lottie}
-        autoPlay={autoPlay}
-        loop={loop}
-        resizeMode="contain"
-      />
+      <View style={[styles.fallbackCircle, {width: size, height: size, borderRadius: size / 2}]}> 
+        <Text style={[styles.fallbackEmoji, {fontSize: emojiSize}]}>🦇</Text>
+      </View>
     </View>
   );
 };
@@ -38,8 +31,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lottie: {
+  fallbackCircle: {
     width: '100%',
     height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  fallbackEmoji: {
+    textAlign: 'center',
   },
 });
