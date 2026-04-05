@@ -77,15 +77,12 @@ export const SetupProfileScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const identity = await IdentityService.ensureIdentity();
-
       const profile: UserProfile = {
         id: generateProfileId(),
         username: trimUser,
         displayName: trimName,
         avatarColor: selectedColor,
         avatarEmoji: selectedEmoji,
-        identityPublicKey: identity.publicKey,
         status: status.trim() || 'Hey, I am using ProximaChat!',
         createdAt: Date.now(),
       };
@@ -106,6 +103,34 @@ export const SetupProfileScreen: React.FC = () => {
       } catch (err) {
         console.error('[Setup] Nearby service initialization failed:', err);
       }
+
+      // Generate crypto identity in the background so profile setup never blocks or crashes.
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const identity = await IdentityService.ensureIdentity();
+            const latest = useAppStore.getState().profile;
+            if (!latest || latest.id !== profile.id || latest.identityPublicKey) {
+              return;
+            }
+
+            const upgraded: UserProfile = {
+              ...latest,
+              identityPublicKey: identity.publicKey,
+            };
+            useAppStore.getState().setProfile(upgraded);
+            await StorageService.saveProfile(upgraded);
+
+            try {
+              NearbyService.initialize(upgraded);
+            } catch (err) {
+              console.warn('[Setup] Nearby re-init after identity failed:', err);
+            }
+          } catch (err) {
+            console.warn('[Setup] Deferred identity generation failed:', err);
+          }
+        })();
+      }, 0);
 
       if (saveFailed) {
         Alert.alert(

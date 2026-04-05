@@ -27,15 +27,7 @@ export const RootNavigator: React.FC = () => {
       try {
         const data = await StorageService.loadAll();
         if (data.profile) {
-          let resolvedProfile = data.profile;
-          if (!resolvedProfile.identityPublicKey) {
-            const identity = await IdentityService.ensureIdentity();
-            resolvedProfile = {
-              ...resolvedProfile,
-              identityPublicKey: identity.publicKey,
-            };
-            await StorageService.saveProfile(resolvedProfile);
-          }
+          const resolvedProfile = data.profile;
 
           hydrateState({
             profile: resolvedProfile,
@@ -47,6 +39,29 @@ export const RootNavigator: React.FC = () => {
               ? {...useAppStore.getState().settings, ...data.settings}
               : useAppStore.getState().settings,
           });
+
+          if (!resolvedProfile.identityPublicKey) {
+            setTimeout(() => {
+              void (async () => {
+                try {
+                  const identity = await IdentityService.ensureIdentity();
+                  const latest = useAppStore.getState().profile;
+                  if (!latest || latest.identityPublicKey) {
+                    return;
+                  }
+
+                  const upgraded = {
+                    ...latest,
+                    identityPublicKey: identity.publicKey,
+                  };
+                  useAppStore.getState().setProfile(upgraded);
+                  await StorageService.saveProfile(upgraded);
+                } catch (err) {
+                  console.warn('[Nav] Deferred identity generation failed:', err);
+                }
+              })();
+            }, 0);
+          }
         }
       } catch (err) {
         console.error('[Nav] Failed to load stored data:', err);
