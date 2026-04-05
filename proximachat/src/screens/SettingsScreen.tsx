@@ -38,6 +38,7 @@ export const SettingsScreen: React.FC = () => {
   } = useAppStore();
 
   const [notifications, setNotifications] = useState(true);
+  const appVersion = DeviceInfo.getVersion();
 
   const persistSettings = async (updates: Parameters<typeof updateSettings>[0]) => {
     const next = {...useAppStore.getState().settings, ...updates};
@@ -358,7 +359,7 @@ export const SettingsScreen: React.FC = () => {
           <SettingsRow
             icon="heart"
             label="ProximaChat"
-            subtitle="Version 1.0.0 • Offline P2P Chat"
+            subtitle={`Version ${appVersion} • Offline P2P Chat`}
             isLast
           />
         </View>

@@ -29,8 +29,8 @@ android {
         applicationId "com.proximachat"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 6
+        versionName "1.0.6"
     }
 
     signingConfigs {
