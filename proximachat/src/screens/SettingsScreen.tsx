@@ -21,6 +21,7 @@ import {UserAvatar} from '../components/UserAvatar';
 import {SvgIcon, IconName} from '../components/SvgIcon';
 import {useAppStore} from '../store/useAppStore';
 import {StorageService} from '../services/StorageService';
+import {AdvancedStackService} from '../services/AdvancedStackService';
 import {COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from '../theme';
 
 export const SettingsScreen: React.FC = () => {
@@ -112,6 +113,26 @@ export const SettingsScreen: React.FC = () => {
       title: 'ProximaChat Diagnostics',
       message: JSON.stringify(payload, null, 2),
     });
+  };
+
+  const showAdvancedStackStatus = () => {
+    const report = AdvancedStackService.inspectCapabilities();
+    Alert.alert(
+      'Advanced Stack Status',
+      [
+        `NFC: ${report.nfc.available ? 'Ready' : 'Missing'}`,
+        report.nfc.details,
+        '',
+        `WebRTC: ${report.webrtc.available ? 'Ready' : 'Missing'}`,
+        report.webrtc.details,
+        '',
+        `SQLite: ${report.sqlite.available ? 'Ready' : 'Missing'}`,
+        report.sqlite.details,
+        '',
+        `Realm: ${report.realm.available ? 'Ready' : 'Missing'}`,
+        report.realm.details,
+      ].join('\n'),
+    );
   };
 
   const handleClearData = () => {
@@ -356,6 +377,12 @@ export const SettingsScreen: React.FC = () => {
         {/* About */}
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.section}>
+          <SettingsRow
+            icon="wifi"
+            label="Advanced Protocol Stack"
+            subtitle="NFC, WebRTC, SQLite, Realm readiness"
+            onPress={showAdvancedStackStatus}
+          />
           <SettingsRow
             icon="heart"
             label="ProximaChat"

@@ -126,16 +126,23 @@ export const FriendsListScreen: React.FC = () => {
       {/* Header */}
       <View style={[styles.header, {paddingTop: insets.top + SPACING.sm}]}>
         <Text style={styles.headerTitle}>Friends</Text>
-        <TouchableOpacity
-          style={styles.requestsButton}
-          onPress={() => navigation.navigate('FriendRequests')}>
-          <SvgIcon name="add-person" size={18} color={COLORS.textWhite} />
-          {pendingCount > 0 && (
-            <View style={styles.requestsBadge}>
-              <Badge count={pendingCount} />
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.directAddButton}
+            onPress={() => navigation.navigate('DirectAdd')}>
+            <SvgIcon name="camera" size={18} color={COLORS.textWhite} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.requestsButton}
+            onPress={() => navigation.navigate('FriendRequests')}>
+            <SvgIcon name="add-person" size={18} color={COLORS.textWhite} />
+            {pendingCount > 0 && (
+              <View style={styles.requestsBadge}>
+                <Badge count={pendingCount} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Pending requests banner */}
@@ -191,6 +198,14 @@ const styles = StyleSheet.create({
   },
   requestsButton: {
     position: 'relative',
+    padding: SPACING.xs,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  directAddButton: {
     padding: SPACING.xs,
   },
   requestsBadge: {

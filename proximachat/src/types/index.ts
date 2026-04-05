@@ -165,6 +165,16 @@ export interface AppState {
   diagnostics: DiagnosticsState;
 }
 
+export interface InvitePayload {
+  version: 1;
+  profileId: string;
+  username: string;
+  displayName: string;
+  avatarColor: string;
+  avatarEmoji?: string;
+  createdAt: number;
+}
+
 export interface AppSettings {
   themePack: 'classic' | 'midnight' | 'graphite';
   compactPeerCards: boolean;
@@ -211,4 +221,5 @@ export type ChatsStackParamList = {
 export type FriendsStackParamList = {
   FriendsList: undefined;
   FriendRequests: undefined;
+  DirectAdd: undefined;
 };

@@ -13,6 +13,7 @@ import {ChatScreen} from '../screens/ChatScreen';
 import {DiscoveryScreen} from '../screens/DiscoveryScreen';
 import {FriendsListScreen} from '../screens/FriendsListScreen';
 import {FriendRequestsScreen} from '../screens/FriendRequestsScreen';
+import {DirectAddScreen} from '../screens/DirectAddScreen';
 import {SettingsScreen} from '../screens/SettingsScreen';
 
 // Components
@@ -58,6 +59,11 @@ function FriendsNavigator() {
       <FriendsStack.Screen
         name="FriendRequests"
         component={FriendRequestsScreen}
+        options={{animation: 'slide_from_right'}}
+      />
+      <FriendsStack.Screen
+        name="DirectAdd"
+        component={DirectAddScreen}
         options={{animation: 'slide_from_right'}}
       />
     </FriendsStack.Navigator>
