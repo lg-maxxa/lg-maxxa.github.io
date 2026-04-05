@@ -22,7 +22,21 @@ LogBox.ignoreLogs([
 
 const App: React.FC = () => {
   useEffect(() => {
-    StorageService.init();
+    let mounted = true;
+    void (async () => {
+      try {
+        await StorageService.init();
+      } catch (err) {
+        // Avoid startup crash loops on devices where native storage modules fail.
+        if (mounted) {
+          console.error('[App] Storage init failed:', err);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

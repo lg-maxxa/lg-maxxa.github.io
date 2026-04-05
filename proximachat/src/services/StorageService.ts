@@ -65,51 +65,59 @@ async function ensureSqlite(): Promise<typeof _sqliteDb> {
 }
 
 async function migrateMessagesToSqliteIfNeeded(): Promise<void> {
-  const migrated = await AsyncStorage.getItem(KEYS.SQLITE_MIGRATED);
-  if (migrated === '1') {
-    return;
-  }
-
-  const db = await ensureSqlite();
-  if (!db) {
-    return;
-  }
-
-  const keys = await AsyncStorage.getAllKeys();
-  const messageKeys = keys.filter((k) => k.startsWith(KEYS.MESSAGES_PREFIX));
-
-  for (const key of messageKeys) {
-    // eslint-disable-next-line no-await-in-loop
-    const raw = await AsyncStorage.getItem(key);
-    if (!raw) {
-      continue;
+  try {
+    const migrated = await AsyncStorage.getItem(KEYS.SQLITE_MIGRATED);
+    if (migrated === '1') {
+      return;
     }
 
-    const conversationId = key.replace(KEYS.MESSAGES_PREFIX, '');
-    let parsed: Message[] = [];
-    try {
-      parsed = JSON.parse(raw) as Message[];
-    } catch {
-      parsed = [];
+    const db = await ensureSqlite();
+    if (!db) {
+      return;
     }
 
-    for (const msg of parsed) {
+    const keys = await AsyncStorage.getAllKeys();
+    const messageKeys = keys.filter((k) => k.startsWith(KEYS.MESSAGES_PREFIX));
+
+    for (const key of messageKeys) {
       // eslint-disable-next-line no-await-in-loop
-      await db.executeSql(
-        'INSERT OR REPLACE INTO messages (id, conversation_id, timestamp, payload) VALUES (?, ?, ?, ?);',
-        [msg.id, conversationId, msg.timestamp, JSON.stringify(msg)],
-      );
-    }
-  }
+      const raw = await AsyncStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
 
-  await AsyncStorage.setItem(KEYS.SQLITE_MIGRATED, '1');
+      const conversationId = key.replace(KEYS.MESSAGES_PREFIX, '');
+      let parsed: Message[] = [];
+      try {
+        parsed = JSON.parse(raw) as Message[];
+      } catch {
+        parsed = [];
+      }
+
+      for (const msg of parsed) {
+        // eslint-disable-next-line no-await-in-loop
+        await db.executeSql(
+          'INSERT OR REPLACE INTO messages (id, conversation_id, timestamp, payload) VALUES (?, ?, ?, ?);',
+          [msg.id, conversationId, msg.timestamp, JSON.stringify(msg)],
+        );
+      }
+    }
+
+    await AsyncStorage.setItem(KEYS.SQLITE_MIGRATED, '1');
+  } catch (err) {
+    console.warn('[Storage] SQLite migration skipped due to error:', err);
+  }
 }
 
 export const StorageService = {
   async init(): Promise<void> {
-    await ensureSqlite();
-    await migrateMessagesToSqliteIfNeeded();
-    console.log('[Storage] Initialized');
+    try {
+      await ensureSqlite();
+      await migrateMessagesToSqliteIfNeeded();
+      console.log('[Storage] Initialized');
+    } catch (err) {
+      console.warn('[Storage] Initialization fallback to AsyncStorage only:', err);
+    }
   },
 
   // ── Profile ───────────────────────────────────────────────────────────────

@@ -51,8 +51,14 @@ export const RootNavigator: React.FC = () => {
       } catch (err) {
         console.error('[Nav] Failed to load stored data:', err);
       } finally {
-        await MessageQueueService.processQueue().catch(() => undefined);
         setIsLoading(false);
+
+        // Defer queue retries until after first render to reduce startup crash risk.
+        setTimeout(() => {
+          void MessageQueueService.processQueue().catch((err) => {
+            console.warn('[Nav] Queue processing skipped during startup:', err);
+          });
+        }, 0);
       }
     })();
   }, [hydrateState]);
