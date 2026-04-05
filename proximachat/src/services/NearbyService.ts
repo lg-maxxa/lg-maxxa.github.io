@@ -36,6 +36,28 @@ let _bleManager: {
 } | null = null;
 let _wifiP2PModule: Record<string, unknown> | null = null;
 let _wifiPeersSubscription: EmitterSubscription | null = null;
+let _wifiConnectionSubscription: EmitterSubscription | null = null;
+let _wifiMessageLoopActive = false;
+
+type WifiP2PInfo = {
+  groupFormed: boolean;
+  isGroupOwner: boolean;
+};
+
+type WifiP2PModule = {
+  initialize?: () => Promise<boolean>;
+  subscribeOnPeersUpdates?: (callback: (data: {devices: unknown[]}) => void) => EmitterSubscription;
+  subscribeOnConnectionInfoUpdates?: (callback: (data: WifiP2PInfo) => void) => EmitterSubscription;
+  startDiscoveringPeers?: () => Promise<string>;
+  stopDiscoveringPeers?: () => Promise<void>;
+  createGroup?: () => Promise<void>;
+  removeGroup?: () => Promise<void>;
+  connect?: (deviceAddress: string) => Promise<void>;
+  getConnectionInfo?: () => Promise<WifiP2PInfo>;
+  sendMessageTo?: (message: string, address: string) => Promise<unknown>;
+  receiveMessage?: (props: {meta: boolean}) => Promise<string>;
+  stopReceivingMessage?: () => void;
+};
 
 // Lazy-import native modules to avoid crash if unlinked
 function getBle() {
@@ -151,6 +173,89 @@ function parseWifiPeer(device: unknown): Peer | null {
   };
 }
 
+function isWifiPeerId(peerId: string): boolean {
+  return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(peerId);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForWifiConnection(
+  wifi: WifiP2PModule,
+  timeoutMs = 7000,
+): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const info = await wifi.getConnectionInfo?.();
+      if (info?.groupFormed) {
+        return true;
+      }
+    } catch {
+      // Keep polling until timeout.
+    }
+    await sleep(350);
+  }
+  return false;
+}
+
+function startWifiMessageLoop(wifi: WifiP2PModule): void {
+  if (_wifiMessageLoopActive || typeof wifi.receiveMessage !== 'function') {
+    return;
+  }
+
+  _wifiMessageLoopActive = true;
+  void (async () => {
+    while (_wifiMessageLoopActive) {
+      try {
+        const raw = await wifi.receiveMessage?.({meta: true});
+        if (!raw) {
+          continue;
+        }
+        const payload = JSON.parse(raw) as NetworkPayload;
+        if (payload && typeof payload.type === 'string') {
+          NearbyService._dispatchEvent(payload);
+        }
+      } catch (err) {
+        if (!_wifiMessageLoopActive) {
+          break;
+        }
+        console.warn('[Nearby] Message receive retry:', err);
+        await sleep(500);
+      }
+    }
+  })();
+}
+
+async function ensureWifiConnection(peerId: string): Promise<boolean> {
+  if (!isWifiPeerId(peerId)) {
+    return false;
+  }
+
+  const wifi = getWifiP2P() as WifiP2PModule | null;
+  if (!wifi) {
+    return false;
+  }
+
+  try {
+    const info = await wifi.getConnectionInfo?.();
+    if (info?.groupFormed) {
+      return true;
+    }
+  } catch {
+    // Continue with explicit connect.
+  }
+
+  try {
+    await wifi.connect?.(peerId);
+    return await waitForWifiConnection(wifi);
+  } catch (err) {
+    console.error('[Nearby] Wi-Fi Direct connect failed:', err);
+    return false;
+  }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const NearbyService = {
@@ -172,6 +277,17 @@ export const NearbyService = {
     _isAdvertising = true;
     console.log('[Nearby] Started advertising');
 
+    const wifi = getWifiP2P() as WifiP2PModule | null;
+    if (wifi) {
+      try {
+        await wifi.initialize?.();
+        await wifi.createGroup?.();
+        startWifiMessageLoop(wifi);
+      } catch (err) {
+        console.warn('[Nearby] Wi-Fi Direct advertising setup failed:', err);
+      }
+    }
+
     // Real BLE advertising would be done here
     // For Android Wi-Fi Direct:
     // const wifiP2P = getWifiP2P();
@@ -186,6 +302,14 @@ export const NearbyService = {
    */
   stopAdvertising(): void {
     _isAdvertising = false;
+
+    const wifi = _wifiP2PModule as WifiP2PModule | null;
+    if (!_isScanning) {
+      _wifiMessageLoopActive = false;
+      wifi?.stopReceivingMessage?.();
+    }
+    void wifi?.removeGroup?.();
+
     console.log('[Nearby] Stopped advertising');
   },
 
@@ -217,15 +341,10 @@ export const NearbyService = {
       );
     }
 
-    const wifiP2P = getWifiP2P();
+    const wifiP2P = getWifiP2P() as WifiP2PModule | null;
     if (wifiP2P) {
       try {
-        const wifi = wifiP2P as {
-          initialize?: () => Promise<boolean>;
-          subscribeOnPeersUpdates?: (callback: (data: {devices: unknown[]}) => void) => EmitterSubscription;
-          startDiscoveringPeers?: () => Promise<string>;
-          stopDiscoveringPeers?: () => Promise<void>;
-        };
+        const wifi = wifiP2P;
         await wifi.initialize?.();
 
         _wifiPeersSubscription = wifi.subscribeOnPeersUpdates?.((data) => {
@@ -236,6 +355,15 @@ export const NearbyService = {
             }
           });
         }) ?? null;
+
+        _wifiConnectionSubscription =
+          wifi.subscribeOnConnectionInfoUpdates?.((info) => {
+            if (info?.groupFormed) {
+              console.log('[Nearby] Wi-Fi Direct group formed');
+            }
+          }) ?? null;
+
+        startWifiMessageLoop(wifi);
 
         if (typeof wifi.startDiscoveringPeers === 'function') {
           await wifi.startDiscoveringPeers();
@@ -257,13 +385,21 @@ export const NearbyService = {
       console.error('[Nearby] Failed to stop BLE scan:', err);
     }
     try {
-      const wifi = _wifiP2PModule as {
-        stopDiscoveringPeers?: () => Promise<void>;
-      } | null;
+      const wifi = _wifiP2PModule as WifiP2PModule | null;
       if (_wifiPeersSubscription) {
         _wifiPeersSubscription.remove();
         _wifiPeersSubscription = null;
       }
+      if (_wifiConnectionSubscription) {
+        _wifiConnectionSubscription.remove();
+        _wifiConnectionSubscription = null;
+      }
+
+      if (!_isAdvertising) {
+        _wifiMessageLoopActive = false;
+        wifi?.stopReceivingMessage?.();
+      }
+
       void wifi?.stopDiscoveringPeers?.();
     } catch (err) {
       console.error('[Nearby] Failed to stop Wi-Fi Direct discovery:', err);
@@ -305,11 +441,13 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending friend request to ${peerId}`);
-    const wifi = getWifiP2P() as {
-      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
-    } | null;
+    const wifi = getWifiP2P() as WifiP2PModule | null;
     if (wifi?.sendMessageTo) {
       try {
+        const connected = await ensureWifiConnection(peerId);
+        if (!connected) {
+          return false;
+        }
         await wifi.sendMessageTo(JSON.stringify(payload), peerId);
         return true;
       } catch (err) {
@@ -355,11 +493,13 @@ export const NearbyService = {
     console.log(
       `[Nearby] ${accepted ? 'Accepted' : 'Rejected'} friend request from ${peerId}`,
     );
-    const wifi = getWifiP2P() as {
-      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
-    } | null;
+    const wifi = getWifiP2P() as WifiP2PModule | null;
     if (wifi?.sendMessageTo) {
       try {
+        const connected = await ensureWifiConnection(peerId);
+        if (!connected) {
+          return false;
+        }
         await wifi.sendMessageTo(JSON.stringify(payload), peerId);
         return true;
       } catch (err) {
@@ -386,11 +526,13 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending message to ${peerId}: ${message.text}`);
-    const wifi = getWifiP2P() as {
-      sendMessageTo?: (message: string, address: string) => Promise<unknown>;
-    } | null;
+    const wifi = getWifiP2P() as WifiP2PModule | null;
     if (wifi?.sendMessageTo) {
       try {
+        const connected = await ensureWifiConnection(peerId);
+        if (!connected) {
+          return false;
+        }
         await wifi.sendMessageTo(JSON.stringify(payload), peerId);
         return true;
       } catch (err) {
@@ -453,6 +595,8 @@ export const NearbyService = {
     _bleManager = null;
     _wifiP2PModule = null;
     _wifiPeersSubscription = null;
+    _wifiConnectionSubscription = null;
+    _wifiMessageLoopActive = false;
     _listeners = [];
     _profile = null;
   },

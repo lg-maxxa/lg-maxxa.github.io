@@ -14,7 +14,6 @@
     <!-- ── Location (required for BLE scan on API < 31) ── -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- ── Wi-Fi Direct ── -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -36,7 +35,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- BLE hardware feature -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
     <uses-feature android:name="android.hardware.wifi.direct" android:required="false" />
 
     <application
@@ -62,16 +61,5 @@
             </intent-filter>
         </activity>
 
-        <!-- Wi-Fi Direct receiver -->
-        <receiver
-            android:name="android.net.wifi.p2p.WifiP2pManager"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.net.wifi.p2p.STATE_CHANGED" />
-                <action android:name="android.net.wifi.p2p.PEERS_CHANGED" />
-                <action android:name="android.net.wifi.p2p.CONNECTION_STATE_CHANGE" />
-                <action android:name="android.net.wifi.p2p.THIS_DEVICE_CHANGED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

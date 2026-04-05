@@ -12,6 +12,7 @@ import {
   Alert,
   Platform,
   PermissionsAndroid,
+  type Permission,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PeerCard} from '../components/PeerCard';
@@ -78,7 +79,7 @@ export const DiscoveryScreen: React.FC = () => {
         ? Platform.Version
         : Number(Platform.Version);
 
-    const permissions: PermissionsAndroid.Permission[] = [
+    const permissions: Permission[] = [
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
     ];
@@ -87,20 +88,32 @@ export const DiscoveryScreen: React.FC = () => {
       permissions.push(
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
       );
     }
 
     if (apiLevel >= 33 && PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES) {
       permissions.push(
-        PermissionsAndroid.PERMISSIONS
-          .NEARBY_WIFI_DEVICES as PermissionsAndroid.Permission,
+        PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES,
       );
     }
 
-    const results = await PermissionsAndroid.requestMultiple(permissions);
-    return permissions.every(
-      (permission) => results[permission] === PermissionsAndroid.RESULTS.GRANTED,
+    const results = await PermissionsAndroid.requestMultiple(
+      permissions,
     );
+
+    const denied = permissions.filter(
+      (permission) =>
+        results[permission as keyof typeof results] !==
+        PermissionsAndroid.RESULTS.GRANTED,
+    );
+
+    if (denied.length > 0) {
+      console.warn('[Discovery] Denied permissions:', denied);
+      return false;
+    }
+
+    return true;
   }, []);
 
   // ── Start/stop scanning ───────────────────────────────────────────────────
