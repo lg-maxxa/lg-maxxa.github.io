@@ -29,6 +29,17 @@ let _sqliteDb: {
   executeSql: (sql: string, params?: unknown[]) => Promise<Array<{rows: {length: number; item: (idx: number) => {payload: string}}}>>;
 } | null = null;
 
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 async function ensureSqlite(): Promise<typeof _sqliteDb> {
   if (_sqliteDb) {
     return _sqliteDb;
@@ -127,7 +138,7 @@ export const StorageService = {
 
   async loadProfile(): Promise<UserProfile | null> {
     const raw = await AsyncStorage.getItem(KEYS.PROFILE);
-    return raw ? JSON.parse(raw) : null;
+    return safeParse<UserProfile | null>(raw, null);
   },
 
   async clearProfile(): Promise<void> {
@@ -141,7 +152,7 @@ export const StorageService = {
 
   async loadFriends(): Promise<Friend[]> {
     const raw = await AsyncStorage.getItem(KEYS.FRIENDS);
-    return raw ? JSON.parse(raw) : [];
+    return safeParse<Friend[]>(raw, []);
   },
 
   // ── Friend Requests ───────────────────────────────────────────────────────
@@ -151,7 +162,7 @@ export const StorageService = {
 
   async loadFriendRequests(): Promise<FriendRequest[]> {
     const raw = await AsyncStorage.getItem(KEYS.FRIEND_REQUESTS);
-    return raw ? JSON.parse(raw) : [];
+    return safeParse<FriendRequest[]>(raw, []);
   },
 
   // ── Conversations ─────────────────────────────────────────────────────────
@@ -164,7 +175,7 @@ export const StorageService = {
 
   async loadConversations(): Promise<Conversation[]> {
     const raw = await AsyncStorage.getItem(KEYS.CONVERSATIONS);
-    return raw ? JSON.parse(raw) : [];
+    return safeParse<Conversation[]>(raw, []);
   },
 
   // ── Discovery peers ───────────────────────────────────────────────────────
@@ -225,7 +236,7 @@ export const StorageService = {
     const raw = await AsyncStorage.getItem(
       `${KEYS.MESSAGES_PREFIX}${conversationId}`,
     );
-    return raw ? JSON.parse(raw) : [];
+    return safeParse<Message[]>(raw, []);
   },
 
   async clearMessages(conversationId: string): Promise<void> {
@@ -247,7 +258,7 @@ export const StorageService = {
 
   async loadIdentity(): Promise<CryptoIdentity | null> {
     const raw = await AsyncStorage.getItem(KEYS.IDENTITY);
-    return raw ? (JSON.parse(raw) as CryptoIdentity) : null;
+    return safeParse<CryptoIdentity | null>(raw, null);
   },
 
   // ── Settings ──────────────────────────────────────────────────────────────
@@ -257,7 +268,7 @@ export const StorageService = {
 
   async loadSettings(): Promise<Partial<AppSettings> | null> {
     const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
-    return raw ? JSON.parse(raw) : null;
+    return safeParse<Partial<AppSettings> | null>(raw, null);
   },
 
   // ── Full hydration ────────────────────────────────────────────────────────

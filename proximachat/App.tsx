@@ -10,6 +10,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {RootNavigator} from './src/navigation/RootNavigator';
 import {AppStoreProvider} from './src/store/AppContext';
 import {StorageService} from './src/services/StorageService';
+import {AppErrorBoundary} from './src/components/AppErrorBoundary';
 import {navigationRef} from './src/navigation/navigationRef';
 import {COLORS} from './src/theme/colors';
 
@@ -42,14 +43,16 @@ const App: React.FC = () => {
     <GestureHandlerRootView style={{flex: 1}}>
       <SafeAreaProvider>
         <AppStoreProvider>
-          <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-            <StatusBar
-              barStyle="light-content"
-              backgroundColor={COLORS.primary}
-              translucent={false}
-            />
-            <RootNavigator />
-          </NavigationContainer>
+          <AppErrorBoundary>
+            <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+              <StatusBar
+                barStyle="light-content"
+                backgroundColor={COLORS.primary}
+                translucent={false}
+              />
+              <RootNavigator />
+            </NavigationContainer>
+          </AppErrorBoundary>
         </AppStoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
