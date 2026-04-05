@@ -12,8 +12,10 @@ import {
   Alert,
   Platform,
   PermissionsAndroid,
+  Linking,
   type Permission,
 } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PeerCard} from '../components/PeerCard';
 import {EmptyState} from '../components/EmptyState';
@@ -74,10 +76,16 @@ export const DiscoveryScreen: React.FC = () => {
       return true;
     }
 
-    const apiLevel =
+    let apiLevel =
       typeof Platform.Version === 'number'
         ? Platform.Version
         : Number(Platform.Version);
+
+    try {
+      apiLevel = await DeviceInfo.getApiLevel();
+    } catch {
+      // Keep fallback value from Platform.Version.
+    }
 
     const permissions: Permission[] = [
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -98,11 +106,22 @@ export const DiscoveryScreen: React.FC = () => {
       );
     }
 
-    const results = await PermissionsAndroid.requestMultiple(
-      permissions,
-    );
+    const missing: Permission[] = [];
+    for (const permission of permissions) {
+      // eslint-disable-next-line no-await-in-loop
+      const granted = await PermissionsAndroid.check(permission);
+      if (!granted) {
+        missing.push(permission);
+      }
+    }
 
-    const denied = permissions.filter(
+    if (missing.length === 0) {
+      return true;
+    }
+
+    const results = await PermissionsAndroid.requestMultiple(missing);
+
+    const denied = missing.filter(
       (permission) =>
         results[permission as keyof typeof results] !==
         PermissionsAndroid.RESULTS.GRANTED,
@@ -110,6 +129,19 @@ export const DiscoveryScreen: React.FC = () => {
 
     if (denied.length > 0) {
       console.warn('[Discovery] Denied permissions:', denied);
+      Alert.alert(
+        'Permissions required',
+        'Please allow Bluetooth, Nearby devices, Wi-Fi and Location permissions to discover and connect nearby users.',
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              void Linking.openSettings();
+            },
+          },
+        ],
+      );
       return false;
     }
 
