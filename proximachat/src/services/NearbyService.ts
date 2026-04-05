@@ -14,6 +14,8 @@ import {Platform} from 'react-native';
 import type {EmitterSubscription} from 'react-native';
 import type {NetworkPayload, Peer, UserProfile} from '../types';
 import {useAppStore} from '../store/useAppStore';
+import NetInfo from '@react-native-community/netinfo';
+import DeviceInfo from 'react-native-device-info';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
@@ -33,6 +35,7 @@ let _bleManager: {
     listener: (error: unknown, device: unknown) => void,
   ) => void;
   stopDeviceScan: () => void;
+  state?: () => Promise<string>;
   destroy?: () => void;
 } | null = null;
 let _wifiP2PModule: Record<string, unknown> | null = null;
@@ -650,6 +653,51 @@ export const NearbyService = {
    */
   isConnected(): boolean {
     return _isAdvertising || _isScanning;
+  },
+
+  /**
+   * Runtime capability/status check for professional scan flow
+   */
+  async getRuntimeStatus(): Promise<{
+    bluetoothOn: boolean;
+    wifiOn: boolean;
+    locationOn: boolean;
+  }> {
+    let bluetoothOn = false;
+    let wifiOn = false;
+    let locationOn = false;
+
+    try {
+      const ble = getBle();
+      const bleState = await ble?.state?.();
+      bluetoothOn = bleState === 'PoweredOn';
+    } catch {
+      bluetoothOn = false;
+    }
+
+    try {
+      const net = await NetInfo.fetch();
+      const details = net.details as {isWifiEnabled?: boolean} | null;
+      wifiOn =
+        net.type === 'wifi' ||
+        details?.isWifiEnabled === true;
+    } catch {
+      wifiOn = false;
+    }
+
+    try {
+      locationOn = await DeviceInfo.isLocationEnabled();
+    } catch {
+      locationOn = false;
+    }
+
+    diagnostic(
+      'info',
+      'permissions',
+      `Runtime status => BT:${bluetoothOn ? 'on' : 'off'} Wi-Fi:${wifiOn ? 'on' : 'off'} Location:${locationOn ? 'on' : 'off'}`,
+    );
+
+    return {bluetoothOn, wifiOn, locationOn};
   },
 
   /**

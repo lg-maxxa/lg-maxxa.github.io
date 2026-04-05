@@ -41,6 +41,8 @@ export const DiscoveryScreen: React.FC = () => {
     updatePeer,
     clearPeers,
     addFriendRequest,
+    setBluetoothEnabled,
+    setWifiEnabled,
   } = useAppStore();
 
   const [pulseAnim] = useState(new Animated.Value(1));
@@ -155,6 +157,62 @@ export const DiscoveryScreen: React.FC = () => {
       return;
     }
 
+    const runtime = await NearbyService.getRuntimeStatus();
+    setBluetoothEnabled(runtime.bluetoothOn);
+    setWifiEnabled(runtime.wifiOn);
+
+    if (!runtime.bluetoothOn || !runtime.wifiOn || !runtime.locationOn) {
+      const missing: string[] = [];
+      if (!runtime.bluetoothOn) {
+        missing.push('Bluetooth');
+      }
+      if (!runtime.wifiOn) {
+        missing.push('Wi-Fi');
+      }
+      if (!runtime.locationOn) {
+        missing.push('Location service');
+      }
+
+      Alert.alert(
+        'Turn On Device Services',
+        `To discover nearby users, enable: ${missing.join(', ')}.`,
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Bluetooth Settings',
+            onPress: () => {
+              if (Platform.OS === 'android' && Linking.sendIntent) {
+                void Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS');
+              } else {
+                void Linking.openSettings();
+              }
+            },
+          },
+          {
+            text: 'Wi-Fi Settings',
+            onPress: () => {
+              if (Platform.OS === 'android' && Linking.sendIntent) {
+                void Linking.sendIntent('android.settings.WIFI_SETTINGS');
+              } else {
+                void Linking.openSettings();
+              }
+            },
+          },
+          {
+            text: 'Location Settings',
+            onPress: () => {
+              if (Platform.OS === 'android' && Linking.sendIntent) {
+                void Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
+              } else {
+                void Linking.openSettings();
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     const granted = await requestScanPermissions();
     if (!granted) {
       Alert.alert(
@@ -200,6 +258,8 @@ export const DiscoveryScreen: React.FC = () => {
     requestScanPermissions,
     clearPeers,
     setScanning,
+    setBluetoothEnabled,
+    setWifiEnabled,
     friends,
     settings.strictNearbyMode,
     addPeer,
