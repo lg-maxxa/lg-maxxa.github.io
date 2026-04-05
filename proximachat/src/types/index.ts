@@ -161,6 +161,31 @@ export interface AppState {
   activeConversationId: string | null;
   isBluetoothEnabled: boolean;
   isWifiEnabled: boolean;
+  settings: AppSettings;
+  diagnostics: DiagnosticsState;
+}
+
+export interface AppSettings {
+  themePack: 'classic' | 'midnight' | 'graphite';
+  compactPeerCards: boolean;
+  reducedMotion: boolean;
+  highContrast: boolean;
+  strictNearbyMode: boolean;
+  deliveryRetryEnabled: boolean;
+}
+
+export interface DiagnosticsLogEntry {
+  id: string;
+  level: 'info' | 'warn' | 'error';
+  source: 'permissions' | 'discovery' | 'transport' | 'messaging' | 'system';
+  message: string;
+  timestamp: number;
+}
+
+export interface DiagnosticsState {
+  lastPermissionCheckAt?: number;
+  lastConnectionCheckAt?: number;
+  logs: DiagnosticsLogEntry[];
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────────

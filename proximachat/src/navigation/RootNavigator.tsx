@@ -29,6 +29,9 @@ export const RootNavigator: React.FC = () => {
             friends: data.friends,
             friendRequests: data.friendRequests,
             conversations: data.conversations,
+            settings: data.settings
+              ? {...useAppStore.getState().settings, ...data.settings}
+              : useAppStore.getState().settings,
           });
         }
       } catch (err) {

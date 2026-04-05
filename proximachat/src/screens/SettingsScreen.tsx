@@ -10,7 +10,12 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Platform,
+  PermissionsAndroid,
+  Share,
+  type Permission,
 } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {UserAvatar} from '../components/UserAvatar';
 import {SvgIcon, IconName} from '../components/SvgIcon';
@@ -20,10 +25,93 @@ import {COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from 
 
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const {profile, isBluetoothEnabled, isWifiEnabled, setBluetoothEnabled, setWifiEnabled} =
-    useAppStore();
+  const {
+    profile,
+    isBluetoothEnabled,
+    isWifiEnabled,
+    setBluetoothEnabled,
+    setWifiEnabled,
+    settings,
+    updateSettings,
+    diagnostics,
+    clearDiagnosticLogs,
+  } = useAppStore();
 
   const [notifications, setNotifications] = useState(true);
+
+  const persistSettings = async (updates: Parameters<typeof updateSettings>[0]) => {
+    const next = {...useAppStore.getState().settings, ...updates};
+    updateSettings(updates);
+    await StorageService.saveSettings(next);
+  };
+
+  const getPermissionSnapshot = async (): Promise<string[]> => {
+    if (Platform.OS !== 'android') {
+      return ['iOS runtime permissions are managed by the system prompt flow.'];
+    }
+
+    const checks: Array<[string, Permission]> = [
+      ['ACCESS_FINE_LOCATION', PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
+      ['ACCESS_COARSE_LOCATION', PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION],
+      ['BLUETOOTH_SCAN', PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN],
+      ['BLUETOOTH_CONNECT', PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT],
+      ['BLUETOOTH_ADVERTISE', PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE],
+      ['NEARBY_WIFI_DEVICES', PermissionsAndroid.PERMISSIONS.NEARBY_WIFI_DEVICES],
+    ];
+
+    const results: string[] = [];
+    for (const [label, permission] of checks) {
+      if (!permission) {
+        continue;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      const granted = await PermissionsAndroid.check(permission);
+      results.push(`${label}: ${granted ? 'GRANTED' : 'DENIED'}`);
+    }
+    return results;
+  };
+
+  const runConnectivityCheck = async () => {
+    const apiLevel = await DeviceInfo.getApiLevel().catch(() => null);
+    const os = DeviceInfo.getSystemVersion();
+    const permissions = await getPermissionSnapshot();
+    const logs = useAppStore.getState().diagnostics.logs.slice(0, 8);
+
+    Alert.alert(
+      'Connectivity Diagnostics',
+      [
+        `Device: ${DeviceInfo.getModel()}`,
+        `Android: ${os}${apiLevel ? ` (API ${apiLevel})` : ''}`,
+        `Bluetooth toggle: ${useAppStore.getState().isBluetoothEnabled ? 'ON' : 'OFF'}`,
+        `Wi-Fi Direct toggle: ${useAppStore.getState().isWifiEnabled ? 'ON' : 'OFF'}`,
+        '',
+        'Permissions:',
+        ...permissions,
+        '',
+        'Recent transport logs:',
+        ...(logs.length > 0
+          ? logs.map((l) => `${new Date(l.timestamp).toLocaleTimeString()} [${l.level}] ${l.message}`)
+          : ['No logs yet']),
+      ].join('\n'),
+    );
+  };
+
+  const exportDiagnostics = async () => {
+    const logs = useAppStore.getState().diagnostics.logs;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      deviceModel: DeviceInfo.getModel(),
+      settings: useAppStore.getState().settings,
+      bluetoothEnabled: useAppStore.getState().isBluetoothEnabled,
+      wifiEnabled: useAppStore.getState().isWifiEnabled,
+      logs,
+    };
+
+    await Share.share({
+      title: 'ProximaChat Diagnostics',
+      message: JSON.stringify(payload, null, 2),
+    });
+  };
 
   const handleClearData = () => {
     Alert.alert(
@@ -126,6 +214,117 @@ export const SettingsScreen: React.FC = () => {
                 thumbColor={COLORS.textWhite}
               />
             }
+            isLast
+          />
+        </View>
+
+        {/* Professional controls */}
+        <Text style={styles.sectionTitle}>Professional Controls</Text>
+        <View style={styles.section}>
+          <SettingsRow
+            icon="signal"
+            label="Delivery Retry"
+            subtitle="Retry failed peer sends with fallback transport"
+            right={
+              <Switch
+                value={settings.deliveryRetryEnabled}
+                onValueChange={(v) => {
+                  void persistSettings({deliveryRetryEnabled: v});
+                }}
+                trackColor={{false: COLORS.inputBorder, true: COLORS.accent}}
+                thumbColor={COLORS.textWhite}
+              />
+            }
+          />
+          <SettingsRow
+            icon="wifi"
+            label="Strict Nearby Mode"
+            subtitle="Show only peers with stable transport signal"
+            right={
+              <Switch
+                value={settings.strictNearbyMode}
+                onValueChange={(v) => {
+                  void persistSettings({strictNearbyMode: v});
+                }}
+                trackColor={{false: COLORS.inputBorder, true: COLORS.accent}}
+                thumbColor={COLORS.textWhite}
+              />
+            }
+          />
+          <SettingsRow
+            icon="chat"
+            label="Compact Peer Cards"
+            subtitle="Reduce discovery card spacing for dense lists"
+            right={
+              <Switch
+                value={settings.compactPeerCards}
+                onValueChange={(v) => {
+                  void persistSettings({compactPeerCards: v});
+                }}
+                trackColor={{false: COLORS.inputBorder, true: COLORS.accent}}
+                thumbColor={COLORS.textWhite}
+              />
+            }
+          />
+          <SettingsRow
+            icon="circle"
+            label="Reduced Motion"
+            subtitle="Minimize non-essential animations"
+            right={
+              <Switch
+                value={settings.reducedMotion}
+                onValueChange={(v) => {
+                  void persistSettings({reducedMotion: v});
+                }}
+                trackColor={{false: COLORS.inputBorder, true: COLORS.accent}}
+                thumbColor={COLORS.textWhite}
+              />
+            }
+          />
+          <SettingsRow
+            icon="lock"
+            label="High Contrast"
+            subtitle="Increase contrast for improved readability"
+            right={
+              <Switch
+                value={settings.highContrast}
+                onValueChange={(v) => {
+                  void persistSettings({highContrast: v});
+                }}
+                trackColor={{false: COLORS.inputBorder, true: COLORS.accent}}
+                thumbColor={COLORS.textWhite}
+              />
+            }
+            isLast
+          />
+        </View>
+
+        {/* Diagnostics */}
+        <Text style={styles.sectionTitle}>Diagnostics</Text>
+        <View style={styles.section}>
+          <SettingsRow
+            icon="info"
+            label="Run Connectivity Check"
+            subtitle="Validate permissions, API level and transport state"
+            onPress={() => {
+              void runConnectivityCheck();
+            }}
+          />
+          <SettingsRow
+            icon="attach"
+            label="Export Diagnostics"
+            subtitle="Share technical logs for QA and support"
+            onPress={() => {
+              void exportDiagnostics();
+            }}
+          />
+          <SettingsRow
+            icon="close"
+            label="Clear Diagnostics Logs"
+            subtitle={`${diagnostics.logs.length} log entries currently stored`}
+            onPress={() => {
+              clearDiagnosticLogs();
+            }}
             isLast
           />
         </View>

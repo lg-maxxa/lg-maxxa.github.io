@@ -13,6 +13,7 @@
 import {Platform} from 'react-native';
 import type {EmitterSubscription} from 'react-native';
 import type {NetworkPayload, Peer, UserProfile} from '../types';
+import {useAppStore} from '../store/useAppStore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
@@ -55,6 +56,7 @@ type WifiP2PModule = {
   connect?: (deviceAddress: string) => Promise<void>;
   getConnectionInfo?: () => Promise<WifiP2PInfo>;
   sendMessageTo?: (message: string, address: string) => Promise<unknown>;
+  sendMessage?: (message: string) => Promise<unknown>;
   receiveMessage?: (props: {meta: boolean}) => Promise<string>;
   stopReceivingMessage?: () => void;
 };
@@ -97,6 +99,18 @@ function sanitizeUsername(name: string): string {
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_]/g, '');
   return cleaned.length >= 3 ? cleaned : `user_${Date.now().toString().slice(-5)}`;
+}
+
+function diagnostic(
+  level: 'info' | 'warn' | 'error',
+  source: 'permissions' | 'discovery' | 'transport' | 'messaging' | 'system',
+  message: string,
+): void {
+  try {
+    useAppStore.getState().addDiagnosticLog({level, source, message});
+  } catch {
+    // Ignore store access errors in service layer.
+  }
 }
 
 function inferDistance(rssi?: number): Peer['distance'] | undefined {
@@ -249,11 +263,69 @@ async function ensureWifiConnection(peerId: string): Promise<boolean> {
 
   try {
     await wifi.connect?.(peerId);
-    return await waitForWifiConnection(wifi);
+    const connected = await waitForWifiConnection(wifi);
+    diagnostic(
+      connected ? 'info' : 'warn',
+      'transport',
+      connected
+        ? `Wi-Fi Direct connected to ${peerId}`
+        : `Wi-Fi Direct connection timed out for ${peerId}`,
+    );
+    return connected;
   } catch (err) {
     console.error('[Nearby] Wi-Fi Direct connect failed:', err);
+    diagnostic('error', 'transport', `Wi-Fi Direct connect failed for ${peerId}`);
     return false;
   }
+}
+
+async function sendWithRetry(peerId: string, payload: NetworkPayload): Promise<boolean> {
+  const settings = useAppStore.getState().settings;
+  const wifi = getWifiP2P() as WifiP2PModule | null;
+  const serialized = JSON.stringify(payload);
+
+  if (!wifi?.sendMessageTo) {
+    diagnostic('warn', 'transport', 'Wi-Fi Direct send API unavailable');
+    return false;
+  }
+
+  const attempts = settings.deliveryRetryEnabled ? 3 : 1;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const connected = await ensureWifiConnection(peerId);
+      if (!connected) {
+        throw new Error('connection_not_ready');
+      }
+
+      await wifi.sendMessageTo(serialized, peerId);
+      diagnostic('info', 'messaging', `Payload sent to ${peerId} on attempt ${attempt}`);
+      return true;
+    } catch (err) {
+      diagnostic(
+        attempt === attempts ? 'error' : 'warn',
+        'messaging',
+        `Send attempt ${attempt}/${attempts} failed for ${peerId}`,
+      );
+      if (attempt < attempts) {
+        await sleep(350 * attempt);
+      }
+    }
+  }
+
+  // Fallback path for some stacks where group-owner broadcast works better.
+  try {
+    const fallback = wifi.sendMessage;
+    if (typeof fallback === 'function') {
+      await fallback(serialized);
+      diagnostic('warn', 'messaging', `Fallback broadcast send succeeded for ${peerId}`);
+      return true;
+    }
+  } catch (err) {
+    diagnostic('error', 'messaging', `Fallback broadcast send failed for ${peerId}`);
+  }
+
+  return false;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -265,6 +337,7 @@ export const NearbyService = {
   initialize(profile: UserProfile): void {
     _profile = profile;
     console.log(`[Nearby] Initialized as ${profile.displayName}`);
+    diagnostic('info', 'system', `Nearby initialized for ${profile.displayName}`);
   },
 
   /**
@@ -276,6 +349,7 @@ export const NearbyService = {
     }
     _isAdvertising = true;
     console.log('[Nearby] Started advertising');
+    diagnostic('info', 'discovery', 'Advertising started');
 
     const wifi = getWifiP2P() as WifiP2PModule | null;
     if (wifi) {
@@ -285,6 +359,7 @@ export const NearbyService = {
         startWifiMessageLoop(wifi);
       } catch (err) {
         console.warn('[Nearby] Wi-Fi Direct advertising setup failed:', err);
+        diagnostic('warn', 'transport', 'Wi-Fi advertising setup failed');
       }
     }
 
@@ -311,6 +386,7 @@ export const NearbyService = {
     void wifi?.removeGroup?.();
 
     console.log('[Nearby] Stopped advertising');
+    diagnostic('info', 'discovery', 'Advertising stopped');
   },
 
   /**
@@ -322,6 +398,7 @@ export const NearbyService = {
     }
     _isScanning = true;
     console.log('[Nearby] Started discovery');
+    diagnostic('info', 'discovery', 'Discovery started');
 
     const bleManager = getBle();
     if (bleManager) {
@@ -331,6 +408,7 @@ export const NearbyService = {
         (error, device) => {
           if (error) {
             console.error('[Nearby] BLE scan error:', error);
+            diagnostic('warn', 'discovery', 'BLE scan error');
             return;
           }
           const peer = parseBlePeer(device);
@@ -352,6 +430,8 @@ export const NearbyService = {
             const peer = parseWifiPeer(device);
             if (peer) {
               onPeerFound(peer);
+              diagnostic('info', 'discovery', `BLE peer found: ${peer.displayName}`);
+              diagnostic('info', 'discovery', `Wi-Fi peer found: ${peer.displayName}`);
             }
           });
         }) ?? null;
@@ -360,6 +440,7 @@ export const NearbyService = {
           wifi.subscribeOnConnectionInfoUpdates?.((info) => {
             if (info?.groupFormed) {
               console.log('[Nearby] Wi-Fi Direct group formed');
+              diagnostic('info', 'transport', 'Wi-Fi Direct group formed');
             }
           }) ?? null;
 
@@ -370,6 +451,7 @@ export const NearbyService = {
         }
       } catch (err) {
         console.error('[Nearby] Wi-Fi Direct discovery error:', err);
+        diagnostic('error', 'transport', 'Wi-Fi Direct discovery failed');
       }
     }
   },
@@ -405,6 +487,7 @@ export const NearbyService = {
       console.error('[Nearby] Failed to stop Wi-Fi Direct discovery:', err);
     }
     console.log('[Nearby] Stopped discovery');
+    diagnostic('info', 'discovery', 'Discovery stopped');
   },
 
   /**
@@ -441,20 +524,7 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending friend request to ${peerId}`);
-    const wifi = getWifiP2P() as WifiP2PModule | null;
-    if (wifi?.sendMessageTo) {
-      try {
-        const connected = await ensureWifiConnection(peerId);
-        if (!connected) {
-          return false;
-        }
-        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
-        return true;
-      } catch (err) {
-        console.error('[Nearby] Failed to send friend request:', err);
-      }
-    }
-    return false;
+    return sendWithRetry(peerId, payload);
   },
 
   /**
@@ -493,20 +563,7 @@ export const NearbyService = {
     console.log(
       `[Nearby] ${accepted ? 'Accepted' : 'Rejected'} friend request from ${peerId}`,
     );
-    const wifi = getWifiP2P() as WifiP2PModule | null;
-    if (wifi?.sendMessageTo) {
-      try {
-        const connected = await ensureWifiConnection(peerId);
-        if (!connected) {
-          return false;
-        }
-        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
-        return true;
-      } catch (err) {
-        console.error('[Nearby] Failed to respond to friend request:', err);
-      }
-    }
-    return false;
+    return sendWithRetry(peerId, payload);
   },
 
   /**
@@ -526,20 +583,7 @@ export const NearbyService = {
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending message to ${peerId}: ${message.text}`);
-    const wifi = getWifiP2P() as WifiP2PModule | null;
-    if (wifi?.sendMessageTo) {
-      try {
-        const connected = await ensureWifiConnection(peerId);
-        if (!connected) {
-          return false;
-        }
-        await wifi.sendMessageTo(JSON.stringify(payload), peerId);
-        return true;
-      } catch (err) {
-        console.error('[Nearby] Failed to send message:', err);
-      }
-    }
-    return false;
+    return sendWithRetry(peerId, payload);
   },
 
   /**

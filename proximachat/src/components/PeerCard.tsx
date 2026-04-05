@@ -6,6 +6,7 @@ import {View, Text, TouchableOpacity, StyleSheet, ActivityIndicator} from 'react
 import {UserAvatar} from './UserAvatar';
 import {SvgIcon} from './SvgIcon';
 import {COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from '../theme';
+import {useAppStore} from '../store/useAppStore';
 import type {Peer} from '../types';
 
 interface Props {
@@ -27,6 +28,7 @@ const DISTANCE_COLOR: Record<string, string> = {
 };
 
 export const PeerCard: React.FC<Props> = ({peer, onSendRequest}) => {
+  const compact = useAppStore((s) => s.settings.compactPeerCards);
   const isSending = peer.status === 'requesting';
   const isSent = peer.status === 'pending_approval';
 
@@ -39,9 +41,21 @@ export const PeerCard: React.FC<Props> = ({peer, onSendRequest}) => {
 
   const distanceColor = DISTANCE_COLOR[peer.distance ?? 'far'];
   const connLabel = CONNECTION_LABEL[peer.connectionType] ?? 'Nearby';
+  const trustLabel =
+    peer.connectionType === 'both' || peer.distance === 'near'
+      ? 'Strong'
+      : peer.distance === 'medium'
+      ? 'Moderate'
+      : 'Weak';
+  const trustColor =
+    trustLabel === 'Strong'
+      ? '#25D366'
+      : trustLabel === 'Moderate'
+      ? '#FFA726'
+      : '#EF5350';
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact && styles.cardCompact]}>
       {/* Avatar */}
       <UserAvatar
         displayName={peer.displayName}
@@ -75,6 +89,10 @@ export const PeerCard: React.FC<Props> = ({peer, onSendRequest}) => {
               </Text>
             </View>
           )}
+          <View style={[styles.tag, {backgroundColor: trustColor + '1F'}]}>
+            <SvgIcon name="signal" size={10} color={trustColor} />
+            <Text style={[styles.tagText, {color: trustColor}]}>Trust {trustLabel}</Text>
+          </View>
         </View>
       </View>
 
@@ -113,6 +131,10 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.base,
     marginVertical: SPACING.xs,
     ...SHADOWS.small,
+  },
+  cardCompact: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
   info: {
     flex: 1,

@@ -35,6 +35,7 @@ export const DiscoveryScreen: React.FC = () => {
     profile,
     discovery,
     friends,
+    settings,
     setScanning,
     addPeer,
     updatePeer,
@@ -47,7 +48,7 @@ export const DiscoveryScreen: React.FC = () => {
   // ── Pulse animation ────────────────────────────────────────────────────────
   useEffect(() => {
     let pulse: Animated.CompositeAnimation | null = null;
-    if (discovery.isScanning) {
+    if (discovery.isScanning && !settings.reducedMotion) {
       pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -69,7 +70,7 @@ export const DiscoveryScreen: React.FC = () => {
     return () => {
       pulse?.stop();
     };
-  }, [discovery.isScanning, pulseAnim]);
+  }, [discovery.isScanning, pulseAnim, settings.reducedMotion]);
 
   const requestScanPermissions = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') {
@@ -176,6 +177,16 @@ export const DiscoveryScreen: React.FC = () => {
       if (friends.some((f) => f.id === peer.id)) {
         return;
       }
+      if (
+        settings.strictNearbyMode &&
+        !(
+          peer.connectionType === 'both' ||
+          (peer.connectionType === 'wifi' && peer.distance !== 'far') ||
+          (peer.connectionType === 'bluetooth' && peer.distance === 'near')
+        )
+      ) {
+        return;
+      }
       addPeer(peer);
       StorageService.saveDiscoveredPeers(useAppStore.getState().discovery.peers);
     });
@@ -190,6 +201,7 @@ export const DiscoveryScreen: React.FC = () => {
     clearPeers,
     setScanning,
     friends,
+    settings.strictNearbyMode,
     addPeer,
   ]);
 

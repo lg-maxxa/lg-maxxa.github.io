@@ -9,6 +9,7 @@ import type {
   Conversation,
   Peer,
   Message,
+  AppSettings,
 } from '../types';
 
 const KEYS = {
@@ -110,20 +111,32 @@ export const StorageService = {
     );
   },
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+  async saveSettings(settings: AppSettings): Promise<void> {
+    await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+  },
+
+  async loadSettings(): Promise<Partial<AppSettings> | null> {
+    const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
+    return raw ? JSON.parse(raw) : null;
+  },
+
   // ── Full hydration ────────────────────────────────────────────────────────
   async loadAll(): Promise<{
     profile: UserProfile | null;
     friends: Friend[];
     friendRequests: FriendRequest[];
     conversations: Conversation[];
+    settings: Partial<AppSettings> | null;
   }> {
-    const [profile, friends, friendRequests, conversations] = await Promise.all([
+    const [profile, friends, friendRequests, conversations, settings] = await Promise.all([
       StorageService.loadProfile(),
       StorageService.loadFriends(),
       StorageService.loadFriendRequests(),
       StorageService.loadConversations(),
+      StorageService.loadSettings(),
     ]);
-    return {profile, friends, friendRequests, conversations};
+    return {profile, friends, friendRequests, conversations, settings};
   },
 
   // ── Clear all ─────────────────────────────────────────────────────────────

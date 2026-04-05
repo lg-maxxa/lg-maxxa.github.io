@@ -13,6 +13,8 @@ import type {
   Conversation,
   Message,
   DiscoveryState,
+  AppSettings,
+  DiagnosticsLogEntry,
 } from '../types';
 
 interface AppActions {
@@ -53,6 +55,13 @@ interface AppActions {
   setBluetoothEnabled: (enabled: boolean) => void;
   setWifiEnabled: (enabled: boolean) => void;
   hydrateState: (partial: Partial<AppState>) => void;
+
+  // Professional settings
+  updateSettings: (updates: Partial<AppSettings>) => void;
+
+  // Diagnostics
+  addDiagnosticLog: (entry: Omit<DiagnosticsLogEntry, 'id' | 'timestamp'> & {id?: string; timestamp?: number}) => void;
+  clearDiagnosticLogs: () => void;
 }
 
 const initialDiscovery: DiscoveryState = {
@@ -71,6 +80,17 @@ const initialState: AppState = {
   activeConversationId: null,
   isBluetoothEnabled: false,
   isWifiEnabled: false,
+  settings: {
+    themePack: 'classic',
+    compactPeerCards: false,
+    reducedMotion: false,
+    highContrast: false,
+    strictNearbyMode: false,
+    deliveryRetryEnabled: true,
+  },
+  diagnostics: {
+    logs: [],
+  },
 };
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -274,6 +294,30 @@ export const useAppStore = create<AppState & AppActions>()(
     hydrateState: (partial) =>
       set((state) => {
         Object.assign(state, partial);
+      }),
+
+    updateSettings: (updates) =>
+      set((state) => {
+        state.settings = {...state.settings, ...updates};
+      }),
+
+    addDiagnosticLog: (entry) =>
+      set((state) => {
+        const item: DiagnosticsLogEntry = {
+          id: entry.id ?? `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+          level: entry.level,
+          source: entry.source,
+          message: entry.message,
+          timestamp: entry.timestamp ?? Date.now(),
+        };
+
+        state.diagnostics.logs.unshift(item);
+        state.diagnostics.logs = state.diagnostics.logs.slice(0, 200);
+      }),
+
+    clearDiagnosticLogs: () =>
+      set((state) => {
+        state.diagnostics.logs = [];
       }),
   })),
 );
