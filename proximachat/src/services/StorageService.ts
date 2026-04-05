@@ -11,6 +11,7 @@ import type {
   Message,
   AppSettings,
 } from '../types';
+import type {CryptoIdentity} from './IdentityService';
 
 const KEYS = {
   PROFILE: '@proximachat/profile',
@@ -20,11 +21,94 @@ const KEYS = {
   DISCOVERED_PEERS: '@proximachat/discovered_peers',
   MESSAGES_PREFIX: '@proximachat/messages/',
   SETTINGS: '@proximachat/settings',
+  IDENTITY: '@proximachat/identity',
+  SQLITE_MIGRATED: '@proximachat/sqlite_migrated_v1',
 };
+
+let _sqliteDb: {
+  executeSql: (sql: string, params?: unknown[]) => Promise<Array<{rows: {length: number; item: (idx: number) => {payload: string}}}>>;
+} | null = null;
+
+async function ensureSqlite(): Promise<typeof _sqliteDb> {
+  if (_sqliteDb) {
+    return _sqliteDb;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const sqlite = require('react-native-sqlite-storage');
+    sqlite.enablePromise(true);
+    const db = await sqlite.openDatabase({
+      name: 'proximachat.db',
+      location: 'default',
+    });
+    _sqliteDb = db;
+    const readyDb = db;
+
+    await readyDb.executeSql(
+      `CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        conversation_id TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        payload TEXT NOT NULL
+      );`,
+    );
+
+    await readyDb.executeSql(
+      'CREATE INDEX IF NOT EXISTS idx_messages_conversation_time ON messages(conversation_id, timestamp);',
+    );
+
+    return readyDb;
+  } catch {
+    _sqliteDb = null;
+    return null;
+  }
+}
+
+async function migrateMessagesToSqliteIfNeeded(): Promise<void> {
+  const migrated = await AsyncStorage.getItem(KEYS.SQLITE_MIGRATED);
+  if (migrated === '1') {
+    return;
+  }
+
+  const db = await ensureSqlite();
+  if (!db) {
+    return;
+  }
+
+  const keys = await AsyncStorage.getAllKeys();
+  const messageKeys = keys.filter((k) => k.startsWith(KEYS.MESSAGES_PREFIX));
+
+  for (const key of messageKeys) {
+    // eslint-disable-next-line no-await-in-loop
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) {
+      continue;
+    }
+
+    const conversationId = key.replace(KEYS.MESSAGES_PREFIX, '');
+    let parsed: Message[] = [];
+    try {
+      parsed = JSON.parse(raw) as Message[];
+    } catch {
+      parsed = [];
+    }
+
+    for (const msg of parsed) {
+      // eslint-disable-next-line no-await-in-loop
+      await db.executeSql(
+        'INSERT OR REPLACE INTO messages (id, conversation_id, timestamp, payload) VALUES (?, ?, ?, ?);',
+        [msg.id, conversationId, msg.timestamp, JSON.stringify(msg)],
+      );
+    }
+  }
+
+  await AsyncStorage.setItem(KEYS.SQLITE_MIGRATED, '1');
+}
 
 export const StorageService = {
   async init(): Promise<void> {
-    // Initialization placeholder (migration logic, cleanup, etc.)
+    await ensureSqlite();
+    await migrateMessagesToSqliteIfNeeded();
     console.log('[Storage] Initialized');
   },
 
@@ -92,6 +176,19 @@ export const StorageService = {
   ): Promise<void> {
     // Keep only last 200 messages per conversation to avoid storage bloat
     const trimmed = messages.slice(-200);
+
+    const db = await ensureSqlite();
+    if (db) {
+      for (const msg of trimmed) {
+        // eslint-disable-next-line no-await-in-loop
+        await db.executeSql(
+          'INSERT OR REPLACE INTO messages (id, conversation_id, timestamp, payload) VALUES (?, ?, ?, ?);',
+          [msg.id, conversationId, msg.timestamp, JSON.stringify(msg)],
+        );
+      }
+      return;
+    }
+
     await AsyncStorage.setItem(
       `${KEYS.MESSAGES_PREFIX}${conversationId}`,
       JSON.stringify(trimmed),
@@ -99,6 +196,24 @@ export const StorageService = {
   },
 
   async loadMessages(conversationId: string): Promise<Message[]> {
+    const db = await ensureSqlite();
+    if (db) {
+      const rows = await db.executeSql(
+        'SELECT payload FROM messages WHERE conversation_id = ? ORDER BY timestamp ASC;',
+        [conversationId],
+      );
+      const first = rows[0];
+      const out: Message[] = [];
+      for (let i = 0; i < first.rows.length; i += 1) {
+        try {
+          out.push(JSON.parse(first.rows.item(i).payload) as Message);
+        } catch {
+          // Ignore malformed rows.
+        }
+      }
+      return out;
+    }
+
     const raw = await AsyncStorage.getItem(
       `${KEYS.MESSAGES_PREFIX}${conversationId}`,
     );
@@ -106,9 +221,25 @@ export const StorageService = {
   },
 
   async clearMessages(conversationId: string): Promise<void> {
+    const db = await ensureSqlite();
+    if (db) {
+      await db.executeSql('DELETE FROM messages WHERE conversation_id = ?;', [conversationId]);
+      return;
+    }
+
     await AsyncStorage.removeItem(
       `${KEYS.MESSAGES_PREFIX}${conversationId}`,
     );
+  },
+
+  // ── Cryptographic identity ───────────────────────────────────────────────
+  async saveIdentity(identity: CryptoIdentity): Promise<void> {
+    await AsyncStorage.setItem(KEYS.IDENTITY, JSON.stringify(identity));
+  },
+
+  async loadIdentity(): Promise<CryptoIdentity | null> {
+    const raw = await AsyncStorage.getItem(KEYS.IDENTITY);
+    return raw ? (JSON.parse(raw) as CryptoIdentity) : null;
   },
 
   // ── Settings ──────────────────────────────────────────────────────────────

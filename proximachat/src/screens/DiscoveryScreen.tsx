@@ -292,6 +292,7 @@ export const DiscoveryScreen: React.FC = () => {
           fromDisplayName: profile.displayName,
           fromAvatarColor: profile.avatarColor,
           fromAvatarEmoji: profile.avatarEmoji,
+          fromIdentityPublicKey: profile.identityPublicKey,
           toPeerId: peer.id,
           status: 'pending',
           createdAt: Date.now(),

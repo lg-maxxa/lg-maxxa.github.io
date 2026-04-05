@@ -70,6 +70,7 @@ export const FriendRequestsScreen: React.FC = () => {
           displayName: request.fromDisplayName,
           avatarColor: request.fromAvatarColor,
           avatarEmoji: request.fromAvatarEmoji,
+          identityPublicKey: request.fromIdentityPublicKey,
           addedAt: Date.now(),
           isOnline: true,
           connectionType: 'bluetooth',

@@ -11,6 +11,7 @@ export const InviteService = {
       displayName: profile.displayName,
       avatarColor: profile.avatarColor,
       avatarEmoji: profile.avatarEmoji,
+      identityPublicKey: profile.identityPublicKey,
       createdAt: Date.now(),
     };
   },
@@ -48,6 +49,7 @@ export const InviteService = {
         displayName: parsed.displayName,
         avatarColor: parsed.avatarColor,
         avatarEmoji: parsed.avatarEmoji,
+        identityPublicKey: parsed.identityPublicKey,
         createdAt: parsed.createdAt,
       };
     } catch {

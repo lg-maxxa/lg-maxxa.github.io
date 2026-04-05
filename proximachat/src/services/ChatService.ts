@@ -5,6 +5,7 @@ import 'react-native-uuid';
 import type {Message, Conversation, UserProfile, Friend} from '../types';
 import {StorageService} from './StorageService';
 import {NearbyService} from './NearbyService';
+import {MessageQueueService} from './MessageQueueService';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const uuid = require('react-native-uuid');
@@ -83,8 +84,10 @@ export const ChatService = {
     const ok = await NearbyService.sendMessage(peerId, message);
     if (ok) {
       onStatus('sent');
+      await MessageQueueService.processQueue();
     } else {
       onStatus('failed');
+      await MessageQueueService.enqueue(peerId, {...message, status: 'failed'});
     }
   },
 

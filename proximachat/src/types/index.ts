@@ -10,6 +10,7 @@ export interface UserProfile {
   displayName: string;
   avatarColor: string;
   avatarEmoji?: string;
+  identityPublicKey?: string;
   status: string;
   createdAt: number;
 }
@@ -52,6 +53,7 @@ export interface FriendRequest {
   fromDisplayName: string;
   fromAvatarColor: string;
   fromAvatarEmoji?: string;
+  fromIdentityPublicKey?: string;
   toPeerId: string;
   status: RequestStatus;
   message?: string;
@@ -67,6 +69,7 @@ export interface Friend {
   displayName: string;
   avatarColor: string;
   avatarEmoji?: string;
+  identityPublicKey?: string;
   addedAt: number;
   lastMessageAt?: number;
   isOnline: boolean;
@@ -127,7 +130,16 @@ export type NetworkEvent =
   | 'typing_start'
   | 'typing_stop'
   | 'read_receipt'
-  | 'delivery_receipt';
+  | 'delivery_receipt'
+  | 'encrypted_envelope';
+
+export interface EncryptedEnvelope {
+  version: 1;
+  algorithm: 'nacl-box-v1';
+  senderPublicKey: string;
+  nonce: string;
+  ciphertext: string;
+}
 
 export interface NetworkPayload {
   type: NetworkEvent;
@@ -136,6 +148,7 @@ export interface NetworkPayload {
   messageId?: string;
   message?: Message;
   friendRequest?: FriendRequest;
+  encryptedEnvelope?: EncryptedEnvelope;
   timestamp: number;
 }
 
@@ -172,6 +185,7 @@ export interface InvitePayload {
   displayName: string;
   avatarColor: string;
   avatarEmoji?: string;
+  identityPublicKey?: string;
   createdAt: number;
 }
 

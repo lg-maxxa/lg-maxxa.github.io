@@ -16,6 +16,7 @@ import QRCode from 'react-native-qrcode-svg';
 import {SvgIcon} from '../components/SvgIcon';
 import {useAppStore} from '../store/useAppStore';
 import {InviteService} from '../services/InviteService';
+import {NfcInviteService} from '../services/NfcInviteService';
 import {ChatService} from '../services/ChatService';
 import {StorageService} from '../services/StorageService';
 import {COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS} from '../theme';
@@ -46,6 +47,37 @@ export const DirectAddScreen: React.FC = () => {
     });
   };
 
+  const handleWriteNfc = async () => {
+    if (!profile) {
+      return;
+    }
+    const available = await NfcInviteService.isAvailable();
+    if (!available) {
+      Alert.alert('NFC unavailable', 'NFC is not available on this device/build.');
+      return;
+    }
+
+    const ok = await NfcInviteService.writeInviteToTag(
+      InviteService.createInvitePayload(profile),
+    );
+    Alert.alert(ok ? 'NFC written' : 'NFC write failed', ok ? 'Invite written to tag.' : 'Could not write invite to NFC tag.');
+  };
+
+  const handleReadNfc = async () => {
+    const available = await NfcInviteService.isAvailable();
+    if (!available) {
+      Alert.alert('NFC unavailable', 'NFC is not available on this device/build.');
+      return;
+    }
+
+    const text = await NfcInviteService.readInviteFromTag();
+    if (!text) {
+      Alert.alert('No invite detected', 'Could not read invite from NFC tag.');
+      return;
+    }
+    setInviteInput(text);
+  };
+
   const handleAddFromInvite = async () => {
     if (!profile) {
       return;
@@ -68,6 +100,7 @@ export const DirectAddScreen: React.FC = () => {
       displayName: decoded.displayName,
       avatarColor: decoded.avatarColor,
       avatarEmoji: decoded.avatarEmoji,
+      identityPublicKey: decoded.identityPublicKey,
       addedAt: Date.now(),
       isOnline: true,
       connectionType: 'unknown',
@@ -107,6 +140,16 @@ export const DirectAddScreen: React.FC = () => {
             <SvgIcon name="attach" size={16} color={COLORS.textWhite} />
             <Text style={styles.shareText}>Share Invite Link</Text>
           </TouchableOpacity>
+          <View style={styles.nfcRow}>
+            <TouchableOpacity style={styles.nfcBtn} onPress={handleWriteNfc}>
+              <SvgIcon name="wifi" size={14} color={COLORS.textWhite} />
+              <Text style={styles.nfcText}>Write NFC Tag</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.nfcBtn} onPress={handleReadNfc}>
+              <SvgIcon name="bluetooth" size={14} color={COLORS.textWhite} />
+              <Text style={styles.nfcText}>Read NFC Tag</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Add Friend From Invite</Text>
@@ -186,6 +229,24 @@ const styles = StyleSheet.create({
     color: COLORS.textWhite,
     fontSize: FONT_SIZES.sm,
     fontWeight: FONT_WEIGHTS.semibold,
+  },
+  nfcRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  nfcBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 14,
+  },
+  nfcText: {
+    color: COLORS.textWhite,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: FONT_WEIGHTS.medium,
   },
   inputCard: {
     backgroundColor: COLORS.surface,

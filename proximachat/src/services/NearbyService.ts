@@ -16,6 +16,8 @@ import type {NetworkPayload, Peer, UserProfile} from '../types';
 import {useAppStore} from '../store/useAppStore';
 import NetInfo from '@react-native-community/netinfo';
 import DeviceInfo from 'react-native-device-info';
+import {StorageService} from './StorageService';
+import {E2EEService} from './E2EEService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
@@ -539,6 +541,7 @@ export const NearbyService = {
         displayName: _profile.displayName,
         avatarColor: _profile.avatarColor,
         avatarEmoji: _profile.avatarEmoji,
+        identityPublicKey: _profile.identityPublicKey,
       },
       friendRequest: {
         id: requestId,
@@ -547,6 +550,7 @@ export const NearbyService = {
         fromDisplayName: _profile.displayName,
         fromAvatarColor: _profile.avatarColor,
         fromAvatarEmoji: _profile.avatarEmoji,
+        fromIdentityPublicKey: _profile.identityPublicKey,
         toPeerId: peerId,
         status: 'pending',
         createdAt: Date.now(),
@@ -576,6 +580,7 @@ export const NearbyService = {
         username: _profile.username,
         displayName: _profile.displayName,
         avatarColor: _profile.avatarColor,
+        identityPublicKey: _profile.identityPublicKey,
       },
       friendRequest: {
         id: requestId,
@@ -606,14 +611,37 @@ export const NearbyService = {
     if (!_profile) {
       return false;
     }
-    const payload: NetworkPayload = {
+    const plaintext: NetworkPayload = {
       type: 'message_received',
       senderId: _profile.id,
       message,
       timestamp: Date.now(),
     };
     console.log(`[Nearby] Sending message to ${peerId}: ${message.text}`);
-    return sendWithRetry(peerId, payload);
+
+    const friend = useAppStore.getState().friends.find((f) => f.id === peerId);
+    const identity = await StorageService.loadIdentity();
+
+    if (friend?.identityPublicKey && identity?.secretKey && identity.publicKey) {
+      const envelope = E2EEService.encryptPayload(
+        plaintext,
+        friend.identityPublicKey,
+        identity.secretKey,
+        identity.publicKey,
+      );
+
+      const encryptedPayload: NetworkPayload = {
+        type: 'encrypted_envelope',
+        senderId: _profile.id,
+        encryptedEnvelope: envelope,
+        timestamp: Date.now(),
+      };
+      diagnostic('info', 'messaging', `E2EE envelope sent for peer ${peerId}`);
+      return sendWithRetry(peerId, encryptedPayload);
+    }
+
+    diagnostic('warn', 'messaging', `Plaintext fallback used for peer ${peerId}`);
+    return sendWithRetry(peerId, plaintext);
   },
 
   /**

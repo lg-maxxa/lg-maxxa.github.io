@@ -21,7 +21,8 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import type {NativeStackNavigationProp, RouteProp} from '@react-navigation/native-stack';
+import type {RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {MessageBubble} from '../components/MessageBubble';
 import {UserAvatar} from '../components/UserAvatar';
 import {SvgIcon} from '../components/SvgIcon';

@@ -2,6 +2,7 @@
  * ProximaChat - Offline P2P Chat Application
  * Root Application Component
  */
+import 'react-native-get-random-values';
 import React, {useEffect} from 'react';
 import {StatusBar, LogBox} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';

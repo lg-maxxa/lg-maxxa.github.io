@@ -19,6 +19,7 @@ import {AnimatedBat} from '../components/AnimatedBat';
 import {useAppStore} from '../store/useAppStore';
 import {StorageService} from '../services/StorageService';
 import {NearbyService} from '../services/NearbyService';
+import {IdentityService} from '../services/IdentityService';
 import {COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, FONT_WEIGHTS, SHADOWS} from '../theme';
 import type {UserProfile} from '../types';
 
@@ -76,12 +77,15 @@ export const SetupProfileScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
+      const identity = await IdentityService.ensureIdentity();
+
       const profile: UserProfile = {
         id: generateProfileId(),
         username: trimUser,
         displayName: trimName,
         avatarColor: selectedColor,
         avatarEmoji: selectedEmoji,
+        identityPublicKey: identity.publicKey,
         status: status.trim() || 'Hey, I am using ProximaChat!',
         createdAt: Date.now(),
       };

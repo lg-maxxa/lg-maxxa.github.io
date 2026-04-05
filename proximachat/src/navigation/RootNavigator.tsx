@@ -10,6 +10,10 @@ import {useAppStore} from '../store/useAppStore';
 import {StorageService} from '../services/StorageService';
 import {NearbyService} from '../services/NearbyService';
 import {ChatService} from '../services/ChatService';
+import {IdentityService} from '../services/IdentityService';
+import {E2EEService} from '../services/E2EEService';
+import {CRDTService} from '../services/CRDTService';
+import {MessageQueueService} from '../services/MessageQueueService';
 import type {Friend, RootStackParamList} from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -23,8 +27,18 @@ export const RootNavigator: React.FC = () => {
       try {
         const data = await StorageService.loadAll();
         if (data.profile) {
+          let resolvedProfile = data.profile;
+          if (!resolvedProfile.identityPublicKey) {
+            const identity = await IdentityService.ensureIdentity();
+            resolvedProfile = {
+              ...resolvedProfile,
+              identityPublicKey: identity.publicKey,
+            };
+            await StorageService.saveProfile(resolvedProfile);
+          }
+
           hydrateState({
-            profile: data.profile,
+            profile: resolvedProfile,
             isProfileSetup: true,
             friends: data.friends,
             friendRequests: data.friendRequests,
@@ -37,20 +51,38 @@ export const RootNavigator: React.FC = () => {
       } catch (err) {
         console.error('[Nav] Failed to load stored data:', err);
       } finally {
+        await MessageQueueService.processQueue().catch(() => undefined);
         setIsLoading(false);
       }
     })();
   }, [hydrateState]);
 
   useEffect(() => {
-    const unsubscribe = NearbyService.addEventListener(async (payload) => {
+    const unsubscribe = NearbyService.addEventListener(async (incomingPayload) => {
       const state = useAppStore.getState();
       const me = state.profile;
-      if (!me || payload.senderId === me.id) {
+      if (!me || incomingPayload.senderId === me.id) {
         return;
       }
 
       try {
+        let payload = incomingPayload;
+
+        if (payload.type === 'encrypted_envelope' && payload.encryptedEnvelope) {
+          const identity = await StorageService.loadIdentity();
+          if (!identity?.secretKey) {
+            return;
+          }
+          const decrypted = E2EEService.decryptPayload(
+            payload.encryptedEnvelope,
+            identity.secretKey,
+          );
+          if (!decrypted) {
+            return;
+          }
+          payload = decrypted;
+        }
+
         switch (payload.type) {
           case 'friend_request_received': {
             if (!payload.friendRequest || payload.friendRequest.toPeerId !== me.id) {
@@ -73,6 +105,7 @@ export const RootNavigator: React.FC = () => {
               displayName: sender.displayName,
               avatarColor: sender.avatarColor,
               avatarEmoji: sender.avatarEmoji,
+              identityPublicKey: sender.identityPublicKey,
               addedAt: Date.now(),
               isOnline: true,
               connectionType: 'wifi',
@@ -120,10 +153,21 @@ export const RootNavigator: React.FC = () => {
               status: message.status === 'failed' ? 'delivered' : message.status,
             });
 
+            const merged = CRDTService.mergeMessages(
+              latest.messages[message.conversationId] ?? [],
+              [
+                {
+                  ...message,
+                  status: message.status === 'failed' ? 'delivered' : message.status,
+                },
+              ],
+            );
+            latest.setMessages(message.conversationId, merged);
+
             await Promise.all([
               StorageService.saveMessages(
                 message.conversationId,
-                useAppStore.getState().messages[message.conversationId] ?? [],
+                merged,
               ),
               StorageService.saveConversations(useAppStore.getState().conversations),
             ]);
